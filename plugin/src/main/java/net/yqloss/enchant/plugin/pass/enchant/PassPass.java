@@ -1,7 +1,7 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
 import net.yqloss.enchant.plugin.Enchanter;
-import net.yqloss.enchant.plugin.Pass;
+import net.yqloss.enchant.plugin.pass.Pass;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;

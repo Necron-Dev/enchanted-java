@@ -1,5 +1,6 @@
 package net.yqloss.enchant.plugin;
 
+import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.enchant.*;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;

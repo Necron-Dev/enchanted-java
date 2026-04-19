@@ -1,9 +1,9 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
 import net.yqloss.enchant.plugin.Enchanter;
-import net.yqloss.enchant.plugin.Pass;
-import net.yqloss.enchant.plugin.TypeConverter;
 import net.yqloss.enchant.plugin.pass.AsmHelper;
+import net.yqloss.enchant.plugin.pass.Pass;
+import net.yqloss.enchant.plugin.pass.TypeConverter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;

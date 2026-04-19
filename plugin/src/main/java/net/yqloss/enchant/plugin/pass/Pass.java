@@ -1,4 +1,4 @@
-package net.yqloss.enchant.plugin;
+package net.yqloss.enchant.plugin.pass;
 
 import org.objectweb.asm.tree.ClassNode;
 
