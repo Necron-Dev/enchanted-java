@@ -19,7 +19,7 @@ public enum ThrowPass implements Pass {
         if (iter.next() instanceof MethodInsnNode min
           && min.getOpcode() == Opcodes.INVOKESTATIC
           && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && "_throw".equals(min.name)
+          && ("_throw".equals(min.name) || "$throw".equals(min.name))
         ) {
           modified = true;
           iter.remove();

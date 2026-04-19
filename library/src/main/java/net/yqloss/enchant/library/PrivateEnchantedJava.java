@@ -12,11 +12,15 @@ class PrivateEnchantedJava {
     throw new UnenchantedException();
   }
 
+  public static RuntimeException $throw(Throwable throwable) {
+    throw new UnenchantedException();
+  }
+
   public static <T> T _never() {
     throw new UnenchantedException();
   }
 
-  public static RuntimeException _unreachable() {
+  public static RuntimeException $never() {
     throw new UnenchantedException();
   }
 
@@ -24,7 +28,15 @@ class PrivateEnchantedJava {
     throw new UnenchantedException();
   }
 
+  public static RuntimeException $return() {
+    throw new UnenchantedException();
+  }
+
   public static <T> T _return(Object value) {
+    throw new UnenchantedException();
+  }
+
+  public static RuntimeException $return(Object value) {
     throw new UnenchantedException();
   }
 }

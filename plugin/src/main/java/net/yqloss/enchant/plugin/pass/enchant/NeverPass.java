@@ -5,7 +5,7 @@ import net.yqloss.enchant.plugin.Pass;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
 
-public enum NeverUnreachablePass implements Pass {
+public enum NeverPass implements Pass {
   Instance;
 
   @Override
@@ -17,7 +17,7 @@ public enum NeverUnreachablePass implements Pass {
         if (iter.next() instanceof MethodInsnNode min
           && min.getOpcode() == Opcodes.INVOKESTATIC
           && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && ("_never".equals(min.name) || "_unreachable".equals(min.name))
+          && ("_never".equals(min.name) || "$never".equals(min.name))
         ) {
           modified = true;
           iter.remove();

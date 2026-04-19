@@ -93,4 +93,8 @@ public class TypeConverter {
       false
     ));
   }
+
+  public static String extractParameters(String methodDesc) {
+    return methodDesc.substring(methodDesc.indexOf('(') + 1, methodDesc.indexOf(')'));
+  }
 }
