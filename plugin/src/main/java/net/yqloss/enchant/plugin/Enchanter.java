@@ -17,6 +17,7 @@ public class Enchanter {
   );
 
   public static final List<Pass> EnchantPasses = List.of(
+    ElvisPass.Instance,
     PassPass.Instance,
     ConstantsPass.Instance,
     NeverPass.Instance,

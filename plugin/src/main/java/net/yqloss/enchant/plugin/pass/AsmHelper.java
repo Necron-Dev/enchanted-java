@@ -2,7 +2,10 @@ package net.yqloss.enchant.plugin.pass;
 
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
+import org.objectweb.asm.util.Textifier;
+import org.objectweb.asm.util.TraceMethodVisitor;
 
+import java.io.PrintWriter;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -47,5 +50,35 @@ public class AsmHelper {
       desc
     ));
     init.instructions.insert(list);
+  }
+
+  public static AbstractInsnNode nextExecutable(AbstractInsnNode node) {
+    do {
+      node = node.getNext();
+    } while (node != null && node.getOpcode() <= 0);
+    return node;
+  }
+
+  public static AbstractInsnNode instructionToExecute(AbstractInsnNode node) {
+    while (node != null && node.getOpcode() <= 0) {
+      node = node.getNext();
+    }
+    return node;
+  }
+
+  public static AbstractInsnNode previousExecutable(AbstractInsnNode node) {
+    do {
+      node = node.getPrevious();
+    } while (node != null && node.getOpcode() <= 0);
+    return node;
+  }
+
+  public static void debugMethod(MethodNode mn) {
+    var textifier = new Textifier();
+    var tmv = new TraceMethodVisitor(textifier);
+    mn.accept(tmv);
+    var pw = new PrintWriter(System.out);
+    textifier.print(pw);
+    pw.flush();
   }
 }

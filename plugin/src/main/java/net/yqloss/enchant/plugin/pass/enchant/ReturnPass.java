@@ -3,6 +3,7 @@ package net.yqloss.enchant.plugin.pass.enchant;
 import net.yqloss.enchant.plugin.Enchanter;
 import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
+import net.yqloss.enchant.plugin.pass.ThrowHelper;
 import net.yqloss.enchant.plugin.pass.TypeConverter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
@@ -29,12 +30,6 @@ public enum ReturnPass implements Pass {
     ).findFirst().orElse(null);
   }
 
-  private AbstractInsnNode nextExecutable(AbstractInsnNode node) {
-    do {
-      node = node.getNext();
-    } while (node != null && node.getOpcode() == -1);
-    return node;
-  }
 
   @Override
   public boolean accept(ClassNode cn) {
@@ -46,6 +41,7 @@ public enum ReturnPass implements Pass {
     );
 
     for (var mn : cn.methods) {
+      var th = new ThrowHelper("return", cn, mn);
       var resultObject = mn.maxLocals;
       var throwableObject = mn.maxLocals + 1;
       var returnLabel = new LabelNode();
@@ -81,13 +77,13 @@ public enum ReturnPass implements Pass {
           if (finallyBlock == null) {
             switch (params) {
               case "" ->
-                TypeConverter.convert(iter::add, Type.VOID_TYPE, returnType);
+                TypeConverter.convert(th, iter::add, Type.VOID_TYPE, returnType);
 
               case "Ljava/lang/Object;" ->
-                TypeConverter.convert(iter::add, objectType, returnType);
+                TypeConverter.convert(th, iter::add, objectType, returnType);
 
               default ->
-                throw new UnsupportedOperationException("unknown _return signature " + min.desc);
+                throw th.raise("unknown return signature %s%s", min.name, min.desc);
             }
 
             iter.add(new InsnNode(returnType.getOpcode(Opcodes.IRETURN)));
@@ -101,18 +97,18 @@ public enum ReturnPass implements Pass {
                   iter.add(new InsnNode(Opcodes.POP));
 
                 default ->
-                  throw new UnsupportedOperationException("unknown _return signature " + min.desc);
+                  throw th.raise("unknown return signature %s%s", min.name, min.desc);
               }
             } else {
               switch (params) {
                 case "" -> // throws because this convert never succeeds
-                  TypeConverter.convert(iter::add, Type.VOID_TYPE, returnType);
+                  TypeConverter.convert(th, iter::add, Type.VOID_TYPE, returnType);
 
                 case "Ljava/lang/Object;" ->
                   iter.add(new VarInsnNode(Opcodes.ASTORE, resultObject));
 
                 default ->
-                  throw new UnsupportedOperationException("unknown _return signature " + min.desc);
+                  throw th.raise("unknown return signature %s%s", min.name, min.desc);
               }
             }
 
@@ -152,7 +148,7 @@ public enum ReturnPass implements Pass {
 
           if (insn instanceof VarInsnNode
             && insn.getOpcode() == Opcodes.ALOAD
-            && nextExecutable(insn) instanceof InsnNode nextInsn
+            && AsmHelper.nextExecutable(insn) instanceof InsnNode nextInsn
             && nextInsn.getOpcode() == Opcodes.ATHROW
           ) {
             var finallyBlock = locateFinally(finallyBlocks, visitedLabels2);
@@ -184,7 +180,7 @@ public enum ReturnPass implements Pass {
           list.add(new InsnNode(Opcodes.RETURN));
         } else {
           list.add(new VarInsnNode(Opcodes.ALOAD, resultObject));
-          TypeConverter.convert(list::add, objectType, returnType);
+          TypeConverter.convert(th, list::add, objectType, returnType);
           list.add(new InsnNode(returnType.getOpcode(Opcodes.IRETURN)));
         }
         mn.instructions.add(list);

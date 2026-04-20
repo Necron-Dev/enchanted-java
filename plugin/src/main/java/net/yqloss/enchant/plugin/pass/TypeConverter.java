@@ -10,12 +10,12 @@ import org.objectweb.asm.tree.TypeInsnNode;
 import java.util.function.Consumer;
 
 public class TypeConverter {
-  public static void convert(Consumer<AbstractInsnNode> append, Type fromType, Type toType) {
+  public static void convert(ThrowHelper th, Consumer<AbstractInsnNode> append, Type fromType, Type toType) {
     var fromSort = fromType.getSort() == Type.ARRAY ? Type.OBJECT : fromType.getSort();
     var toSort = toType.getSort() == Type.ARRAY ? Type.OBJECT : toType.getSort();
 
     if (fromSort == Type.METHOD || toSort == Type.METHOD) {
-      throw new UnsupportedOperationException("convert does not work on method types");
+      throw th.raise("convert does not work on method types");
     }
 
     if (fromType.equals(toType)) return;
@@ -28,7 +28,7 @@ public class TypeConverter {
     }
 
     if (fromSort == Type.VOID) {
-      throw new UnsupportedOperationException("cannot convert void to non-void types");
+      throw th.raise("cannot convert void to non-void types");
     }
 
     if (toSort == Type.VOID) {
@@ -68,7 +68,7 @@ public class TypeConverter {
       return;
     }
 
-    throw new UnsupportedOperationException("cannot convert between primitive types");
+    throw th.raise("cannot convert between primitive types");
   }
 
   private static void fromObject(Consumer<AbstractInsnNode> append, Type primitive, Class<?> clazz, String method) {

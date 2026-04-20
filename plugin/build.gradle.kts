@@ -13,6 +13,8 @@ repositories {
 dependencies {
   implementation("org.ow2.asm:asm:9.9")
   implementation("org.ow2.asm:asm-tree:9.9")
+  implementation("org.ow2.asm:asm-analysis:9.9")
+  implementation("org.ow2.asm:asm-util:9.9")
 }
 
 gradlePlugin {

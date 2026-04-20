@@ -39,4 +39,9 @@ class PrivateEnchantedJava {
   public static RuntimeException $return(Object value) {
     throw new UnenchantedException();
   }
+
+  @SafeVarargs
+  public static <T> T _elvis(T... values) {
+    return values[0];
+  }
 }
