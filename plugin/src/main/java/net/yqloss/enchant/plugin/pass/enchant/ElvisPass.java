@@ -15,9 +15,6 @@ import java.util.List;
 public enum ElvisPass implements Pass {
   Instance;
 
-  private final Analyzer<BasicValue> analyzer = new Analyzer<>(new BasicInterpreter());
-
-  private final Frame<BasicValue> emptyFrame = new Frame<>(0, 0);
 
   private record AnalyzedInsn(
     AbstractInsnNode insn,
@@ -34,6 +31,8 @@ public enum ElvisPass implements Pass {
   @Override
   public boolean accept(ClassNode cn) {
     var modified = false;
+    var analyzer = new Analyzer<>(new BasicInterpreter());
+
     for (var mn : cn.methods) {
       var th = new ThrowHelper("elvis", cn, mn);
 
@@ -42,9 +41,9 @@ public enum ElvisPass implements Pass {
         var frames = analyzer.analyze(cn.name, mn);
         var frameIterator = Arrays.stream(frames).iterator();
         var analyzed = new ArrayList<AnalyzedInsn>(frames.length);
-        mn.instructions.forEach(insn -> {
-          analyzed.add(new AnalyzedInsn(insn, frameIterator.next()));
-        });
+        mn.instructions.forEach(insn ->
+          analyzed.add(new AnalyzedInsn(insn, frameIterator.next()))
+        );
 
         for (var i = analyzed.size() - 1; i >= 0; i--) {
           var item = analyzed.get(i);
@@ -75,9 +74,8 @@ public enum ElvisPass implements Pass {
                 var j = pointer - 1;
                 for (; j >= 0; j--) {
                   if (depth == analyzed.get(j).frame.getStackSize()) {
-                    j--;
-                    while (j >= 0 && analyzed.get(j).insn.getOpcode() <= 0)
-                      j--;
+                    do j--;
+                    while (j >= 0 && analyzed.get(j).insn.getOpcode() <= 0);
                     j++;
                     var jtem = analyzed.get(j);
 
@@ -145,7 +143,12 @@ public enum ElvisPass implements Pass {
   }
 
   private int insertInstructions(List<AnalyzedInsn> list, int index, InsnList insnList) {
-    list.addAll(index, Arrays.stream(insnList.toArray()).map(it -> new AnalyzedInsn(it, emptyFrame)).toList());
+    list.addAll(
+      index,
+      Arrays.stream(insnList.toArray())
+        .map(it -> new AnalyzedInsn(it, new Frame<>(0, 0)))
+        .toList()
+    );
     return insnList.size();
   }
 
