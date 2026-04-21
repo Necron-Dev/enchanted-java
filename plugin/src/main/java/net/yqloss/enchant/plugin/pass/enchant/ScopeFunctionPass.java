@@ -4,9 +4,7 @@ import net.yqloss.enchant.plugin.Enchanter;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.ThrowHelper;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.InsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.*;
 
 public enum ScopeFunctionPass implements Pass {
   Instance;
@@ -23,7 +21,8 @@ public enum ScopeFunctionPass implements Pass {
           && min.getOpcode() == Opcodes.INVOKESTATIC
           && Enchanter.EnchantedJavaClasses.contains(min.owner)
           && switch (min.name) {
-            case "_void", "_run", "_also", "_with" -> true;
+            case "_void", "_run", "_also", "_with",
+                 "_alsoOrNull", "_withOrNull" -> true;
             default -> false;
           }
         ) {
@@ -70,6 +69,47 @@ public enum ScopeFunctionPass implements Pass {
                 "(Ljava/lang/Object;)Ljava/lang/Object;",
                 true
               ));
+            }
+
+            case "_alsoOrNull" -> {
+              var label1 = new LabelNode();
+              var label2 = new LabelNode();
+              iter.add(new InsnNode(Opcodes.SWAP));
+              iter.add(new InsnNode(Opcodes.DUP));
+              iter.add(new JumpInsnNode(Opcodes.IFNULL, label1));
+              iter.add(new InsnNode(Opcodes.DUP_X1));
+              iter.add(new MethodInsnNode(
+                Opcodes.INVOKEINTERFACE,
+                "java/util/function/Consumer",
+                "accept",
+                "(Ljava/lang/Object;)V",
+                true
+              ));
+              iter.add(new JumpInsnNode(Opcodes.GOTO, label2));
+              iter.add(label1);
+              iter.add(new InsnNode(Opcodes.POP2));
+              iter.add(new InsnNode(Opcodes.ACONST_NULL));
+              iter.add(label2);
+            }
+
+            case "_withOrNull" -> {
+              var label1 = new LabelNode();
+              var label2 = new LabelNode();
+              iter.add(new InsnNode(Opcodes.SWAP));
+              iter.add(new InsnNode(Opcodes.DUP));
+              iter.add(new JumpInsnNode(Opcodes.IFNULL, label1));
+              iter.add(new MethodInsnNode(
+                Opcodes.INVOKEINTERFACE,
+                "java/util/function/Function",
+                "apply",
+                "(Ljava/lang/Object;)Ljava/lang/Object;",
+                true
+              ));
+              iter.add(new JumpInsnNode(Opcodes.GOTO, label2));
+              iter.add(label1);
+              iter.add(new InsnNode(Opcodes.POP2));
+              iter.add(new InsnNode(Opcodes.ACONST_NULL));
+              iter.add(label2);
             }
 
             default -> throw th.raise(

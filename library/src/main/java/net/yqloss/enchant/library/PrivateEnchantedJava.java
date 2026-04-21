@@ -347,8 +347,7 @@ class PrivateEnchantedJava {
    */
   @SafeVarargs
   public static <T> T _elvis(T... values) {
-    unenchanted();
-    return values[0];
+    return values[(int) unenchanted()];
   }
 
   /**
@@ -443,6 +442,66 @@ class PrivateEnchantedJava {
   public static <T, R> R _with(T object, Function<T, R> fn) {
     unenchanted();
     return fn.apply(object);
+  }
+
+  /**
+   * Performs a null-safe side effect on an object, mimicking Kotlin's
+   * {@code ?.also}.
+   * <p>
+   * If the {@code object} is {@code null}, this method returns {@code null}
+   * immediately without invoking the consumer. If it is non-null, the
+   * {@code fn} is executed with the object as its argument, and the original
+   * object is returned. The Gradle plugin implements this via a
+   * short-circuiting jump in the bytecode.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Only logs and updates the timestamp if the session is not null
+   * var activeSession = _alsoOrNull(getSession(), s -> {
+   *     logger.info("Session found: " + s.getId());
+   *     s.setLastAccess(System.currentTimeMillis());
+   * });
+   * }</pre>
+   *
+   * @param object the nullable object to operate upon.
+   * @param fn     the action to perform if the object is not null.
+   * @param <T>    the type of the object.
+   * @return the original {@code object}, or {@code null} if the input was
+   * {@code null}.
+   */
+  public static <T> T _alsoOrNull(T object, Consumer<T> fn) {
+    unenchanted();
+    return object;
+  }
+
+  /**
+   * Performs a null-safe transformation on an object, mimicking Kotlin's
+   * {@code ?.let}.
+   * <p>
+   * If the {@code object} is {@code null}, this method returns {@code null}
+   * immediately without invoking the function. Otherwise, it returns the result
+   * of applying the function to the object. This is a placeholder for a Gradle
+   * plugin transformation that injects a null-check and jump in the bytecode.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Safely convert a nullable string to its length, or get 0 via _elvis
+   * var length = _elvis(_withOrNull(getName(), String::length), 0);
+   *
+   * // Transform a nullable entity to a DTO
+   * var dto = _withOrNull(userRepository.findById(id), UserDTO::fromEntity);
+   * }</pre>
+   *
+   * @param object the nullable object to be transformed.
+   * @param fn     the function to apply if the object is not null.
+   * @param <T>    the type of the input object.
+   * @param <R>    the type of the result.
+   * @return the transformed result, or {@code null} if the input was
+   * {@code null}.
+   */
+  public static <T, R> R _withOrNull(T object, Function<T, R> fn) {
+    unenchanted();
+    return object == null ? null : fn.apply(object);
   }
 
   public static <T> T _safe(T expr) {
