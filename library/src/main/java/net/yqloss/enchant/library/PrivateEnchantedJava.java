@@ -325,14 +325,16 @@ class PrivateEnchantedJava {
    * // getDefaultConfig() is ONLY called if findConfig() returns null
    * var cfg = _elvis(findConfig(), getDefaultConfig());
    * }</pre>
+   * <p>
+   * <b>Transformation Constraints:</b>
+   * <p>
+   * Passing an empty argument list or attempting array unpacking will result in
+   * a compilation error during the Gradle plugin's transformation phase.
    *
    * @param values a sequence of expressions to be evaluated lazily.
    * @param <T>    the inferred common type of the expressions.
    * @return the first non-null value in the sequence, or the final value (which
    * can be {@code null}).
-   * @apiNote <b>Transformation Constraints:</b> Passing an empty argument list
-   * or attempting array unpacking will result in a compilation error during the
-   * Gradle plugin's transformation phase.
    */
   @SafeVarargs
   public static <T> T _elvis(T... values) {
