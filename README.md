@@ -21,6 +21,7 @@ import static net.yqloss.enchant.library.EnchantedJava.*;
 * Return as expression with finally and synchronized support: `_return()`
   `_return(value)` `$return()` `$return(value)`
 * Elvis operator with short circuit: `_elvis(value1, value2, ...)`
+* Scope functions: `_void`, `_run`, `_also`, `_with`
 
 For the bottom type, there are currently two implementations:
 
@@ -35,7 +36,6 @@ var input = _elvis(getOptionalInput(), _return(null));
 
 ## TODO
 
-* Void as expression
 * Nullish `?.` operator
 * And more!
 
