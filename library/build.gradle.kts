@@ -18,6 +18,13 @@ java {
   withJavadocJar()
 }
 
+tasks.withType<Javadoc> {
+  (options as StandardJavadocDocletOptions).addStringOption(
+    "Xdoclint:none",
+    "-quiet"
+  )
+}
+
 publishing {
   publications {
     create<MavenPublication>("maven") {

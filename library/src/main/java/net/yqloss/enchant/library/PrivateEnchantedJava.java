@@ -1,5 +1,9 @@
 package net.yqloss.enchant.library;
 
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
 /**
  * The base implementation class for Enchanted Java.
  * <p>
@@ -16,6 +20,10 @@ package net.yqloss.enchant.library;
  */
 @SuppressWarnings("unused")
 class PrivateEnchantedJava {
+  private static <T> T unenchanted() {
+    throw new UnenchantedException();
+  }
+
   /**
    * Provides a leading "false" anchor for chained OR ({@code ||}) logical
    * expressions to simplify reordering or commenting lines. Effectively
@@ -36,7 +44,7 @@ class PrivateEnchantedJava {
    * @see #_all
    * @see #_switch
    */
-  public static boolean _any = false;
+  public static boolean _any = unenchanted();
 
   /**
    * Provides a leading "true" anchor for chained AND ({@code &&}) logical
@@ -57,7 +65,7 @@ class PrivateEnchantedJava {
    * @see #_any
    * @see #_switch
    */
-  public static boolean _all = true;
+  public static boolean _all = unenchanted();
 
   /**
    * Provides a leading "false" anchor for chained ternary ({@code ?:})
@@ -79,7 +87,7 @@ class PrivateEnchantedJava {
    * @see #_any
    * @see #_all
    */
-  public static boolean _switch = false;
+  public static boolean _switch = unenchanted();
 
   /**
    * Performs no operation (No-op), serving as an explicit placeholder for empty
@@ -99,6 +107,7 @@ class PrivateEnchantedJava {
    * }</pre>
    */
   public static void _pass() {
+    unenchanted();
   }
 
   /**
@@ -338,6 +347,63 @@ class PrivateEnchantedJava {
    */
   @SafeVarargs
   public static <T> T _elvis(T... values) {
+    unenchanted();
     return values[0];
+  }
+
+  public <T> T _void(Runnable fn) {
+    unenchanted();
+    return null;
+  }
+
+  public <T> T _run(Supplier<T> fn) {
+    unenchanted();
+    return fn.get();
+  }
+
+  public <T> T _also(T object, Consumer<T> fn) {
+    unenchanted();
+    return object;
+  }
+
+  public <T, R> R _with(T object, Function<T, R> fn) {
+    unenchanted();
+    return fn.apply(object);
+  }
+
+  public <T> T _safe(T expr) {
+    return (boolean) unenchanted() ? expr : null;
+  }
+
+  public Byte _safe(byte expr) {
+    return (boolean) unenchanted() ? expr : null;
+  }
+
+  public Short _safe(short expr) {
+    return (boolean) unenchanted() ? expr : null;
+  }
+
+  public Integer _safe(int expr) {
+    return (boolean) unenchanted() ? expr : null;
+  }
+
+  public Long _safe(long expr) {
+    return (boolean) unenchanted() ? expr : null;
+  }
+
+  public Float _safe(float expr) {
+    return (boolean) unenchanted() ? expr : null;
+  }
+
+  public Double _safe(double expr) {
+    return (boolean) unenchanted() ? expr : null;
+  }
+
+  public Character _safe(char expr) {
+    return (boolean) unenchanted() ? expr : null;
+  }
+
+  public Boolean _safe(boolean expr) {
+    return (boolean) unenchanted() ? expr : null;
   }
 }
