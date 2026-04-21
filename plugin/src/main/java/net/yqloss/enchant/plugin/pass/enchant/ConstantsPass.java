@@ -25,7 +25,7 @@ public enum ConstantsPass implements Pass {
           modified = true;
           iter.remove();
           switch (fin.name) {
-            case "_any" -> iter.add(new InsnNode(Opcodes.ICONST_0));
+            case "_any", "_switch" -> iter.add(new InsnNode(Opcodes.ICONST_0));
             case "_all" -> iter.add(new InsnNode(Opcodes.ICONST_1));
             default -> throw th.raise("unknown constant %s", fin.name);
           }
