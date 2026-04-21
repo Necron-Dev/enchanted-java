@@ -351,21 +351,95 @@ class PrivateEnchantedJava {
     return values[0];
   }
 
+  /**
+   * Executes a block of code and returns {@code null}. The Gradle plugin
+   * replaces this call with a direct invocation of {@link Runnable#run()}
+   * followed by an {@code ACONST_NULL} instruction. This is useful for
+   * executing side effects within an expression context where a return value is
+   * required.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Log a message and return null in a ternary expression
+   * var result = (data != null) ? data : _void(() -> logger.warn("Data is null"));
+   * }</pre>
+   *
+   * @param fn  the code block to execute.
+   * @param <T> the inferred type (always {@code null} at runtime).
+   * @return {@code null} after executing the block.
+   */
   public static <T> T _void(Runnable fn) {
     unenchanted();
     return null;
   }
 
+  /**
+   * Executes a block of code and returns its result, mimicking Kotlin's
+   * {@code run}. The Gradle plugin replaces this call with a direct invocation
+   * of {@link Supplier#get()}. It allows for grouping multiple statements into
+   * a single expression.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * var result = _run(() -> {
+   *     var temp = compute();
+   *     return temp.isValid() ? temp : defaultVal;
+   * });
+   * }</pre>
+   *
+   * @param fn  the code block that supplies the result.
+   * @param <T> the type of the result.
+   * @return the value returned by the supplier.
+   */
   public static <T> T _run(Supplier<T> fn) {
     unenchanted();
     return fn.get();
   }
 
+  /**
+   * Passes the given object to a consumer and returns the object itself,
+   * mimicking Kotlin's {@code also}. The Gradle plugin optimizes this using
+   * {@code SWAP} and {@code DUP_X1} instructions to invoke
+   * {@link Consumer#accept(Object)} while preserving the original object on the
+   * stack.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Initialize an object and use it immediately
+   * return _also(new User(), u -> u.setName("Alice"));
+   * }</pre>
+   *
+   * @param object the object to be operated upon.
+   * @param fn     the action to perform on the object.
+   * @param <T>    the type of the object.
+   * @return the original {@code object}.
+   */
   public static <T> T _also(T object, Consumer<T> fn) {
     unenchanted();
     return object;
   }
 
+  /**
+   * Passes the given object to a function and returns the transformed result,
+   * mimicking Kotlin's {@code let} or {@code with}. The Gradle plugin replaces
+   * this call with a direct invocation of {@link Function#apply(Object)}.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Build a string with StringBuilder
+   * var string = _with(new StringBuilder(), sb -> {
+   *   sb.append("username: ");
+   *   sb.append(user.name);
+   *   return sb.toString();
+   * });
+   * }</pre>
+   *
+   * @param object the object to be transformed.
+   * @param fn     the function that performs the transformation.
+   * @param <T>    the type of the input object.
+   * @param <R>    the type of the result.
+   * @return the result of applying the function to the object.
+   */
   public static <T, R> R _with(T object, Function<T, R> fn) {
     unenchanted();
     return fn.apply(object);
