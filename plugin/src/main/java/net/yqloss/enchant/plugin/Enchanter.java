@@ -20,6 +20,7 @@ public class Enchanter {
     ElvisPass.Instance,
     PassPass.Instance,
     ConstantsPass.Instance,
+    ScopeFunctionPass.Instance,
     NeverPass.Instance,
     ThrowPass.Instance,
     ReturnPass.Instance

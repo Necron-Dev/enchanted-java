@@ -351,59 +351,59 @@ class PrivateEnchantedJava {
     return values[0];
   }
 
-  public <T> T _void(Runnable fn) {
+  public static <T> T _void(Runnable fn) {
     unenchanted();
     return null;
   }
 
-  public <T> T _run(Supplier<T> fn) {
+  public static <T> T _run(Supplier<T> fn) {
     unenchanted();
     return fn.get();
   }
 
-  public <T> T _also(T object, Consumer<T> fn) {
+  public static <T> T _also(T object, Consumer<T> fn) {
     unenchanted();
     return object;
   }
 
-  public <T, R> R _with(T object, Function<T, R> fn) {
+  public static <T, R> R _with(T object, Function<T, R> fn) {
     unenchanted();
     return fn.apply(object);
   }
 
-  public <T> T _safe(T expr) {
+  public static <T> T _safe(T expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public Byte _safe(byte expr) {
+  public static Byte _safe(byte expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public Short _safe(short expr) {
+  public static Short _safe(short expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public Integer _safe(int expr) {
+  public static Integer _safe(int expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public Long _safe(long expr) {
+  public static Long _safe(long expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public Float _safe(float expr) {
+  public static Float _safe(float expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public Double _safe(double expr) {
+  public static Double _safe(double expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public Character _safe(char expr) {
+  public static Character _safe(char expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public Boolean _safe(boolean expr) {
+  public static Boolean _safe(boolean expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 }
