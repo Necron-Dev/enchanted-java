@@ -21,8 +21,7 @@ public enum ScopeFunctionPass implements Pass {
           && min.getOpcode() == Opcodes.INVOKESTATIC
           && Enchanter.EnchantedJavaClasses.contains(min.owner)
           && switch (min.name) {
-            case "_void", "_run", "_also", "_with",
-                 "_alsoOrNull", "_withOrNull" -> true;
+            case "_void", "_run", "_also", "_with", "$also", "$with" -> true;
             default -> false;
           }
         ) {
@@ -71,7 +70,7 @@ public enum ScopeFunctionPass implements Pass {
               ));
             }
 
-            case "_alsoOrNull" -> {
+            case "$also" -> {
               var label1 = new LabelNode();
               var label2 = new LabelNode();
               iter.add(new InsnNode(Opcodes.SWAP));
@@ -92,7 +91,7 @@ public enum ScopeFunctionPass implements Pass {
               iter.add(label2);
             }
 
-            case "_withOrNull" -> {
+            case "$with" -> {
               var label1 = new LabelNode();
               var label2 = new LabelNode();
               iter.add(new InsnNode(Opcodes.SWAP));

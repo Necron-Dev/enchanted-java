@@ -15,7 +15,6 @@ import java.util.List;
 public enum ElvisPass implements Pass {
   Instance;
 
-
   private record AnalyzedInsn(
     AbstractInsnNode insn,
     Frame<BasicValue> frame
@@ -42,16 +41,22 @@ public enum ElvisPass implements Pass {
         var frameIterator = Arrays.stream(frames).iterator();
         var analyzed = new ArrayList<AnalyzedInsn>(frames.length);
         mn.instructions.forEach(insn ->
-          analyzed.add(new AnalyzedInsn(insn, frameIterator.next()))
+                                  analyzed.add(new AnalyzedInsn(insn, frameIterator.next()))
         );
 
         for (var i = analyzed.size() - 1; i >= 0; i--) {
           var item = analyzed.get(i);
 
-          if (item.insn instanceof MethodInsnNode min
+          if (
+            item.insn instanceof MethodInsnNode min
             && min.getOpcode() == Opcodes.INVOKESTATIC
             && Enchanter.EnchantedJavaClasses.contains(min.owner)
-            && "_elvis".equals(min.name)
+            && switch (min.name) {
+              case "$elvis" -> true;
+              case "$" ->
+                "([Ljava/lang/Object;)Ljava/lang/Object;".equals(min.desc);
+              default -> false;
+            }
           ) {
             modified = true;
             modifiedMethod = true;
@@ -59,7 +64,7 @@ public enum ElvisPass implements Pass {
             analyzed.set(i, new AnalyzedInsn(label, item.frame));
 
             if (AsmHelper.previousExecutable(item.insn) instanceof InsnNode in
-              && (in.getOpcode() == Opcodes.AASTORE || in.getOpcode() == Opcodes.ANEWARRAY)
+                && (in.getOpcode() == Opcodes.AASTORE || in.getOpcode() == Opcodes.ANEWARRAY)
             ) {
               if (in.getOpcode() == Opcodes.ANEWARRAY) {
                 throw th.raise("it is not allowed to invoke elvis without arguments; replace it with null");
@@ -83,7 +88,7 @@ public enum ElvisPass implements Pass {
                     pointer = j;
 
                     if (AsmHelper.instructionToExecute(jtem.insn) instanceof InsnNode in2
-                      && in2.getOpcode() == Opcodes.DUP
+                        && in2.getOpcode() == Opcodes.DUP
                     ) {
                       if (j == 0) {
                         throw th.raise("the method body is not expected to start with DUP");
@@ -146,8 +151,8 @@ public enum ElvisPass implements Pass {
     list.addAll(
       index,
       Arrays.stream(insnList.toArray())
-        .map(it -> new AnalyzedInsn(it, new Frame<>(0, 0)))
-        .toList()
+            .map(it -> new AnalyzedInsn(it, new Frame<>(0, 0)))
+            .toList()
     );
     return insnList.size();
   }

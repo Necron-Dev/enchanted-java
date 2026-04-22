@@ -324,7 +324,7 @@ class PrivateEnchantedJava {
    * <b>final value</b> (which may be {@code null}) if all preceding values are
    * {@code null}.
    * <p>
-   * At runtime, {@code _elvis(a(), b(), c())} is functionally equivalent to:
+   * At runtime, {@code $elvis(a(), b(), c())} is functionally equivalent to:
    * <pre>{@code
    * (tmp = a()) != null ? tmp : (tmp = b()) != null ? tmp : c()
    * }</pre>
@@ -332,7 +332,7 @@ class PrivateEnchantedJava {
    * <b>Examples:</b>
    * <pre>{@code
    * // getDefaultConfig() is ONLY called if findConfig() returns null
-   * var cfg = _elvis(findConfig(), getDefaultConfig());
+   * var cfg = $elvis(findConfig(), getDefaultConfig());
    * }</pre>
    * <p>
    * <b>Transformation Constraints:</b>
@@ -346,7 +346,17 @@ class PrivateEnchantedJava {
    * can be {@code null}).
    */
   @SafeVarargs
-  public static <T> T _elvis(T... values) {
+  public static <T> T $elvis(T... values) {
+    return values[(int) unenchanted()];
+  }
+
+  /**
+   * Alias for {@code $elvis}.
+   *
+   * @see #$elvis
+   */
+  @SafeVarargs
+  public static <T> T $(T... values) {
     return values[(int) unenchanted()];
   }
 
@@ -457,7 +467,7 @@ class PrivateEnchantedJava {
    * <b>Examples:</b>
    * <pre>{@code
    * // Only logs and updates the timestamp if the session is not null
-   * var activeSession = _alsoOrNull(getSession(), s -> {
+   * var activeSession = $also(getSession(), s -> {
    *     logger.info("Session found: " + s.getId());
    *     s.setLastAccess(System.currentTimeMillis());
    * });
@@ -469,7 +479,7 @@ class PrivateEnchantedJava {
    * @return the original {@code object}, or {@code null} if the input was
    * {@code null}.
    */
-  public static <T> T _alsoOrNull(T object, Consumer<T> fn) {
+  public static <T> T $also(T object, Consumer<T> fn) {
     unenchanted();
     return object;
   }
@@ -485,11 +495,11 @@ class PrivateEnchantedJava {
    * <p>
    * <b>Examples:</b>
    * <pre>{@code
-   * // Safely convert a nullable string to its length, or get 0 via _elvis
-   * var length = _elvis(_withOrNull(getName(), String::length), 0);
+   * // Safely convert a nullable string to its length, or get 0 via $elvis
+   * var length = $elvis($with(getName(), String::length), 0);
    *
    * // Transform a nullable entity to a DTO
-   * var dto = _withOrNull(userRepository.findById(id), UserDTO::fromEntity);
+   * var dto = $with(userRepository.findById(id), UserDTO::fromEntity);
    * }</pre>
    *
    * @param object the nullable object to be transformed.
@@ -499,44 +509,21 @@ class PrivateEnchantedJava {
    * @return the transformed result, or {@code null} if the input was
    * {@code null}.
    */
-  public static <T, R> R _withOrNull(T object, Function<T, R> fn) {
+  public static <T, R> R $with(T object, Function<T, R> fn) {
     unenchanted();
     return object == null ? null : fn.apply(object);
   }
 
-  public static <T> T _safe(T expr) {
+  public static <T> T $safe(T expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 
-  public static Byte _safe(byte expr) {
-    return (boolean) unenchanted() ? expr : null;
-  }
-
-  public static Short _safe(short expr) {
-    return (boolean) unenchanted() ? expr : null;
-  }
-
-  public static Integer _safe(int expr) {
-    return (boolean) unenchanted() ? expr : null;
-  }
-
-  public static Long _safe(long expr) {
-    return (boolean) unenchanted() ? expr : null;
-  }
-
-  public static Float _safe(float expr) {
-    return (boolean) unenchanted() ? expr : null;
-  }
-
-  public static Double _safe(double expr) {
-    return (boolean) unenchanted() ? expr : null;
-  }
-
-  public static Character _safe(char expr) {
-    return (boolean) unenchanted() ? expr : null;
-  }
-
-  public static Boolean _safe(boolean expr) {
+  /**
+   * Alias for {@code $safe}.
+   *
+   * @see #$safe
+   */
+  public static <T> T $(T expr) {
     return (boolean) unenchanted() ? expr : null;
   }
 }
