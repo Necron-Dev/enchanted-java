@@ -514,6 +514,51 @@ class PrivateEnchantedJava {
     return object == null ? null : fn.apply(object);
   }
 
+  /**
+   * Evaluates an expression with implicit safe navigation and safe casting.
+   * <p>
+   * This method acts as a marker for a Gradle plugin transformation. The plugin
+   * traces backwards from this call and injects safety checks for all
+   * instructions evaluating at the <b>same stack depth</b>:
+   * <ul>
+   *   <li><b>Safe Navigation:</b> A {@code null} check is injected after reference-producing
+   *       instructions. If a reference is {@code null}, the expression short-circuits,
+   *       preventing {@link NullPointerException}. Note that this includes single-argument static
+   *       methods at this depth.</li>
+   *   <li><b>Safe Casting:</b> Any type cast ({@code CHECKCAST}) is prefixed with
+   *       an {@code instanceof} check. If the cast is invalid, it short-circuits
+   *       instead of throwing a {@link ClassCastException}.</li>
+   * </ul>
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Deep safe navigation without multiple ?. operators
+   * var city = $safe(user.getAddress().getCity().getName());
+   *
+   * // Safe casting (evaluates to null if 'obj' is not a String)
+   * var text = $safe((String) obj);
+   * }</pre>
+   * <p>
+   * <b>Transformation Constraints:</b>
+   * <p>
+   * <ul>
+   *   <li>{@code $safe} (or its alias {@code $}) <b>cannot</b> be directly nested
+   *       inside another {@code $safe}.</li>
+   *   <li><b>Instance-accessed static methods:</b> Calling a {@code static} method
+   *       via an object instance (e.g., {@code obj.staticMethod()}) alters the expected
+   *       bytecode stack layout and is strictly prohibited.</li>
+   *   <li><b>Top-level branching:</b> Control flow expressions (such as the ternary
+   *       operator {@code ?:} or {@code switch} expressions) cannot be used directly
+   *       at the top level of the {@code $safe} expression.</li>
+   *   <li>To bypass null-checks for specific operations within the expression,
+   *       use {@link #$unsafe(Object)}.</li>
+   * </ul>
+   *
+   * @param expr the expression to evaluate safely.
+   * @param <T>  the inferred type of the expression.
+   * @return the result of the expression, or {@code null} if a null reference
+   * or invalid cast is encountered.
+   */
   public static <T> T $safe(T expr) {
     return (boolean) unenchanted() ? expr : null;
   }
@@ -527,6 +572,35 @@ class PrivateEnchantedJava {
     return (boolean) unenchanted() ? expr : null;
   }
 
+  /**
+   * Opts a sub-expression out of the safety transformation applied by an
+   * enclosing {@link #$safe(Object)} block.
+   * <p>
+   * When the Gradle plugin injects null-checks for operations at the target
+   * stack depth, wrapping an operation in {@code $unsafe} instructs the plugin
+   * to skip the null-check for that specific operation. The sub-expression will
+   * be evaluated normally and can throw standard exceptions.
+   * <p>
+   * <b>Strict Placement Constraint:</b><br>
+   * {@code $unsafe} must <b>only</b> be used in positions where the plugin
+   * would normally inject a safety check (i.e., operations sharing the exact
+   * stack depth being analyzed by the enclosing {@code $safe}). If used in
+   * nested positions that are not targeted by the tracer, the call will not be
+   * processed and removed, resulting in a <b>compilation error</b> during the
+   * checker phase.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Normally, StaticApi.fetch() would be null-checked before .process().
+   * // $unsafe skips this check, allowing NPE if fetch() returns null.
+   * var result = $safe($unsafe(StaticApi.fetch()).process());
+   * }</pre>
+   *
+   * @param expr the sub-expression to execute without injected safety checks.
+   * @param <T>  the inferred type of the expression.
+   * @return the result of the expression.
+   * @see #$safe(Object)
+   */
   public static <T> T $unsafe(T expr) {
     unenchanted();
     return expr;
