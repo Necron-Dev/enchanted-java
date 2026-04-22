@@ -10,15 +10,17 @@ public record ThrowHelper(
 ) {
   public UnsupportedOperationException raise(String desc, Object... params) {
     return new UnsupportedOperationException(String.format(
-      "[%s] (%s.%s%s) %s",
+      "[%s] <%s.%s%s> %s",
       module, cn.name, mn.name, mn.desc, String.format(desc, params)
     ));
   }
 
   public UnsupportedOperationException raise(Throwable cause, String desc, Object... params) {
-    return new UnsupportedOperationException(String.format(
-      "[%s] (%s.%s%s) %s",
-      module, cn.name, mn.name, mn.desc, String.format(desc, params)
-    ), cause);
+    return new UnsupportedOperationException(
+      String.format(
+        "[%s] (%s.%s%s) %s",
+        module, cn.name, mn.name, mn.desc, String.format(desc, params)
+      ), cause
+    );
   }
 }
