@@ -37,12 +37,13 @@ public enum ElvisPass implements Pass {
 
       try {
         var modifiedMethod = false;
+        mn.maxStack = 65535;
         var frames = analyzer.analyze(cn.name, mn);
         var frameIterator = Arrays.stream(frames).iterator();
         var analyzed = new ArrayList<AnalyzedInsn>(frames.length);
-        mn.instructions.forEach(insn ->
-                                  analyzed.add(new AnalyzedInsn(insn, frameIterator.next()))
-        );
+        mn.instructions.forEach(insn -> {
+          analyzed.add(new AnalyzedInsn(insn, frameIterator.next()));
+        });
 
         for (var i = analyzed.size() - 1; i >= 0; i--) {
           var item = analyzed.get(i);
@@ -150,9 +151,10 @@ public enum ElvisPass implements Pass {
   private int insertInstructions(List<AnalyzedInsn> list, int index, InsnList insnList) {
     list.addAll(
       index,
-      Arrays.stream(insnList.toArray())
-            .map(it -> new AnalyzedInsn(it, new Frame<>(0, 0)))
-            .toList()
+      Arrays
+        .stream(insnList.toArray())
+        .map(it -> new AnalyzedInsn(it, new Frame<>(0, 0)))
+        .toList()
     );
     return insnList.size();
   }
