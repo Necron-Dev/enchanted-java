@@ -574,7 +574,7 @@ class PrivateEnchantedJava {
 
   /**
    * Opts a sub-expression out of the safety transformation applied by an
-   * enclosing {@link #$safe(Object)} block.
+   * enclosing {@code #$safe} block.
    * <p>
    * When the Gradle plugin injects null-checks for operations at the target
    * stack depth, wrapping an operation in {@code $unsafe} instructs the plugin
