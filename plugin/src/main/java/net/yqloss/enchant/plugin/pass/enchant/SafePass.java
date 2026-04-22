@@ -55,6 +55,7 @@ public enum SafePass implements Pass {
             modified = true;
             modifiedMethod = true;
             var label = new LabelNode();
+            var labelNotInstance = new LabelNode();
             analyzed.set(i, new AnalyzedInsn(label, item.frame));
 
             var depth = item.frame.getStackSize();
@@ -75,6 +76,15 @@ public enum SafePass implements Pass {
               }
             }
 
+            var l = new InsnList();
+            l.add(new JumpInsnNode(Opcodes.GOTO, label));
+            l.add(labelNotInstance);
+            l.add(new InsnNode(Opcodes.POP));
+            l.add(new InsnNode(Opcodes.ACONST_NULL));
+            insertInstructions(analyzed, i, l);
+
+            var first = true;
+
             for (var operation : operations) {
               var insn = analyzed.get(operation - 1).insn;
 
@@ -83,13 +93,15 @@ public enum SafePass implements Pass {
                 var list = new InsnList();
                 list.add(new InsnNode(Opcodes.DUP));
                 list.add(new TypeInsnNode(Opcodes.INSTANCEOF, type));
-                list.add(new JumpInsnNode(Opcodes.IFEQ, label));
+                list.add(new JumpInsnNode(Opcodes.IFEQ, labelNotInstance));
                 i += insertInstructions(analyzed, operation - 1, list);
               } else {
-                var list = new InsnList();
-                list.add(new InsnNode(Opcodes.DUP));
-                list.add(new JumpInsnNode(Opcodes.IFNULL, label));
-                i += insertInstructions(analyzed, operation, list);
+                if (!first) {
+                  var list = new InsnList();
+                  list.add(new InsnNode(Opcodes.DUP));
+                  list.add(new JumpInsnNode(Opcodes.IFNULL, label));
+                  i += insertInstructions(analyzed, operation, list);
+                }
 
                 if (
                   insn instanceof MethodInsnNode min2
@@ -114,6 +126,8 @@ public enum SafePass implements Pass {
                   }
                 }
               }
+
+              first = false;
             }
           }
         }
