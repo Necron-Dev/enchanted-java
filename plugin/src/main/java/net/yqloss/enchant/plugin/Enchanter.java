@@ -1,5 +1,6 @@
 package net.yqloss.enchant.plugin;
 
+import net.yqloss.enchant.plugin.pass.CheckerPass;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.enchant.*;
 import org.objectweb.asm.ClassReader;
@@ -24,7 +25,8 @@ public class Enchanter {
     ScopeFunctionPass.Instance,
     NeverPass.Instance,
     ThrowPass.Instance,
-    ReturnPass.Instance
+    ReturnPass.Instance,
+    CheckerPass.Instance
   );
 
   public static final List<Pass> OptimizePasses = List.of(
