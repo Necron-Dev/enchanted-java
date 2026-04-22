@@ -90,6 +90,29 @@ public enum SafePass implements Pass {
                 list.add(new InsnNode(Opcodes.DUP));
                 list.add(new JumpInsnNode(Opcodes.IFNULL, label));
                 i += insertInstructions(analyzed, operation, list);
+
+                if (
+                  insn instanceof MethodInsnNode min2
+                  && min2.getOpcode() == Opcodes.INVOKESTATIC
+                  && Enchanter.EnchantedJavaClasses.contains(min2.owner)
+                ) {
+                  if (
+                    switch (min2.name) {
+                      case "$safe" -> true;
+                      case "$" ->
+                        "(Ljava/lang/Object;)Ljava/lang/Object;".equals(min.desc);
+                      default -> false;
+                    }
+                  ) {
+                    throw th.raise("$safe cannot be used directly in another $safe");
+                  }
+
+                  if ("$unsafe".equals(min2.name)) {
+                    analyzed.remove(operation - 1);
+                    i -= 1;
+                    break;
+                  }
+                }
               }
             }
           }

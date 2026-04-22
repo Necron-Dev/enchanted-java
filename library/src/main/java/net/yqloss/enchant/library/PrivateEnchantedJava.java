@@ -526,4 +526,9 @@ class PrivateEnchantedJava {
   public static <T> T $(T expr) {
     return (boolean) unenchanted() ? expr : null;
   }
+
+  public static <T> T $unsafe(T expr) {
+    unenchanted();
+    return expr;
+  }
 }
