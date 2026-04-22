@@ -22,6 +22,7 @@ import static net.yqloss.enchant.library.EnchantedJava.*;
   `_return(value)` `$return()` `$return(value)`
 * Elvis operator with short circuit: `$elvis(value1, value2, ...)` or `$`
 * Scope functions: `_void`, `_run`, `_also`, `_with`, `$also`, `$with`
+* Safe member access: `$safe(getUser().getName())` or `$`
 
 For the bottom type, there are currently two implementations:
 
@@ -33,13 +34,12 @@ For the bottom type, there are currently two implementations:
 And you can also combine them as you want!
 
 ```java
-var input = $(getOptionalInput(), _return(null));
+var input = $($(getOptionalInput().getFieldA()), _return(null));
 ```
 
 ## TODO
 
-* Nullish `?.` operator
-* And more!
+* Not coming soon...
 
 ## License
 
