@@ -20,9 +20,9 @@ import java.util.function.Supplier;
  */
 @SuppressWarnings("unused")
 class PrivateEnchantedJava {
-  private static <T> T unenchanted() {
-    throw new UnenchantedException();
-  }
+  protected static boolean internalFalse = false;
+
+  protected static int internal0 = 0;
 
   /**
    * Provides a leading "false" anchor for chained OR ({@code ||}) logical
@@ -44,7 +44,7 @@ class PrivateEnchantedJava {
    * @see #_all
    * @see #_switch
    */
-  public static boolean _any = unenchanted();
+  public static boolean _any = false;
 
   /**
    * Provides a leading "true" anchor for chained AND ({@code &&}) logical
@@ -65,7 +65,7 @@ class PrivateEnchantedJava {
    * @see #_any
    * @see #_switch
    */
-  public static boolean _all = unenchanted();
+  public static boolean _all = true;
 
   /**
    * Provides a leading "false" anchor for chained ternary ({@code ?:})
@@ -87,7 +87,7 @@ class PrivateEnchantedJava {
    * @see #_any
    * @see #_all
    */
-  public static boolean _switch = unenchanted();
+  public static boolean _switch = false;
 
   /**
    * Performs no operation (No-op), serving as an explicit placeholder for empty
@@ -106,9 +106,7 @@ class PrivateEnchantedJava {
    * else handle(event);
    * }</pre>
    */
-  public static void _pass() {
-    unenchanted();
-  }
+  public static void _pass() {}
 
   /**
    * Throws a {@link Throwable} within an expression context, such as a ternary
@@ -347,7 +345,7 @@ class PrivateEnchantedJava {
    */
   @SafeVarargs
   public static <T> T $elvis(T... values) {
-    return values[(int) unenchanted()];
+    return values[internal0];
   }
 
   /**
@@ -357,7 +355,7 @@ class PrivateEnchantedJava {
    */
   @SafeVarargs
   public static <T> T $(T... values) {
-    return values[(int) unenchanted()];
+    return values[internal0];
   }
 
   /**
@@ -378,7 +376,7 @@ class PrivateEnchantedJava {
    * @return {@code null} after executing the block.
    */
   public static <T> T _void(Runnable fn) {
-    unenchanted();
+    fn.run();
     return null;
   }
 
@@ -401,7 +399,6 @@ class PrivateEnchantedJava {
    * @return the value returned by the supplier.
    */
   public static <T> T _run(Supplier<T> fn) {
-    unenchanted();
     return fn.get();
   }
 
@@ -424,7 +421,7 @@ class PrivateEnchantedJava {
    * @return the original {@code object}.
    */
   public static <T> T _also(T object, Consumer<T> fn) {
-    unenchanted();
+    fn.accept(object);
     return object;
   }
 
@@ -450,7 +447,6 @@ class PrivateEnchantedJava {
    * @return the result of applying the function to the object.
    */
   public static <T, R> R _with(T object, Function<T, R> fn) {
-    unenchanted();
     return fn.apply(object);
   }
 
@@ -480,7 +476,7 @@ class PrivateEnchantedJava {
    * {@code null}.
    */
   public static <T> T $also(T object, Consumer<T> fn) {
-    unenchanted();
+    if (object != null) fn.accept(object);
     return object;
   }
 
@@ -510,7 +506,6 @@ class PrivateEnchantedJava {
    * {@code null}.
    */
   public static <T, R> R $with(T object, Function<T, R> fn) {
-    unenchanted();
     return object == null ? null : fn.apply(object);
   }
 
@@ -560,7 +555,7 @@ class PrivateEnchantedJava {
    * or invalid cast is encountered.
    */
   public static <T> T $safe(T expr) {
-    return (boolean) unenchanted() ? expr : null;
+    return internalFalse ? expr : null;
   }
 
   /**
@@ -569,7 +564,7 @@ class PrivateEnchantedJava {
    * @see #$safe
    */
   public static <T> T $(T expr) {
-    return (boolean) unenchanted() ? expr : null;
+    return internalFalse ? expr : null;
   }
 
   /**
@@ -602,7 +597,6 @@ class PrivateEnchantedJava {
    * @see #$safe(Object)
    */
   public static <T> T $unsafe(T expr) {
-    unenchanted();
     return expr;
   }
 }
