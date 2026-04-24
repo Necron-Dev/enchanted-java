@@ -1,5 +1,45 @@
 # Enchanted Java
 
+## Usage
+
+```kotlin
+// settings.gradle.kts
+
+pluginManagement {
+  repositories {
+    mavenCentral() // ASM
+    maven("https://maven.yqloss.net") // The plugin
+  }
+}
+```
+
+```kotlin
+// build.gradle.kts
+
+plugins {
+  id("net.yqloss.enchanted-java-plugin") version PLUGIN_VERSION
+}
+
+repositories {
+  maven("https://maven.yqloss.net") // The library
+}
+
+dependencies {
+  compileOnly("net.yqloss:enchanted-java-library:$LIBRARY_VERSION")
+}
+```
+
+```java
+// *.java
+
+import static net.yqloss.enchanted.library.EnchantedJava.*;
+```
+
+The latest version numbers can be checked here:
+
+* [The library](library/build.gradle.kts) `version = "xxx"`
+* [The plugin](plugin/build.gradle.kts) `version = "xxx"`
+
 ## Goals
 
 * No runtime libraries.
