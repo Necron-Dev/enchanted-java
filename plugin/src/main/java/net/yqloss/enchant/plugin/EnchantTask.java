@@ -1,6 +1,7 @@
 package net.yqloss.enchant.plugin;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileType;
 import org.gradle.api.tasks.*;
@@ -10,6 +11,9 @@ import org.gradle.work.InputChanges;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
@@ -24,11 +28,28 @@ public abstract class EnchantTask extends DefaultTask {
   @OutputDirectory
   public abstract DirectoryProperty getOutputDirectory();
 
+  @Internal
+  public abstract ConfigurableFileCollection getClasspath();
+
   @TaskAction
   public void execute(InputChanges inputChanges) throws IOException {
     var inputDir = getInputDirectory();
     if (!inputDir.isPresent() || !inputDir.get().getAsFile().exists()) return;
     var outputDir = getOutputDirectory().get().getAsFile();
+    var classLoader = new URLClassLoader(
+      getClasspath()
+        .getFiles()
+        .stream()
+        .map(x -> {
+          try {
+            return x.toURI().toURL();
+          } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .toArray(URL[]::new),
+      getClass().getClassLoader()
+    );
     for (var change : inputChanges.getFileChanges(inputDir)) {
       if (change.getFileType() == FileType.DIRECTORY) continue;
       var sourceFile = change.getFile();
@@ -43,7 +64,8 @@ public abstract class EnchantTask extends DefaultTask {
         continue;
       }
       var content = Files.readAllBytes(sourceFile.toPath());
-      Files.write(targetFile.toPath(), Enchanter.enchant(content));
+      Files.write(targetFile.toPath(), Enchanter.enchant(content, classLoader));
     }
+    classLoader.close();
   }
 }
