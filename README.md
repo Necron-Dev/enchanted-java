@@ -32,7 +32,7 @@ dependencies {
 ```java
 // *.java
 
-import static net.yqloss.enchanted.library.EnchantedJava.*;
+import static net.yqloss.enchant.library.EnchantedJava.*;
 ```
 
 The latest version numbers can be checked here:
