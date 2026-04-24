@@ -12,9 +12,9 @@ import java.util.Set;
 
 public class Enchanter {
   public static final Set<String> EnchantedJavaClasses = Set.of(
-    "net/yqloss/enchant/library/EnchantedJava",
-    "net/yqloss/enchant/library/Ench",
-    "net/yqloss/enchant/library/E"
+    "yqloss/EnchantedJava",
+    "yqloss/Ench",
+    "yqloss/E"
   );
 
   public static final List<Pass> EnchantPasses = List.of(

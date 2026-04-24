@@ -32,7 +32,7 @@ dependencies {
 ```java
 // *.java
 
-import static net.yqloss.enchant.library.EnchantedJava.*;
+import static yqloss.E.*;
 ```
 
 The latest version numbers can be checked here:
@@ -48,10 +48,6 @@ The latest version numbers can be checked here:
   generating extra classes.
 
 ## Implemented Features
-
-```java
-import static net.yqloss.enchant.library.EnchantedJava.*;
-```
 
 * True (`_all`) and false (`_any`) constants for prettier chained logical
   expressions

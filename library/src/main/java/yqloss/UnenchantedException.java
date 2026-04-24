@@ -1,4 +1,4 @@
-package net.yqloss.enchant.library;
+package yqloss;
 
 /**
  * A placeholder exception used in the method bodies of hooks to satisfy the

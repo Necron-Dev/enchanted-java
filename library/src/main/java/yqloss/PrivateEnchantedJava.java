@@ -1,4 +1,4 @@
-package net.yqloss.enchant.library;
+package yqloss;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
