@@ -52,10 +52,11 @@ The latest version numbers can be checked here:
 * True (`_all`) and false (`_any`) constants for prettier chained logical
   expressions
 * Empty body placeholder: `_pass()`
-* Never (unreachable) as expression: `_never()` `$never()`
-* Throw as expression: `_throw(exception)` `$throw(exception)`
+* Never (unreachable) as expression: `_never()` `_never_()`
+* Throw as expression: `_throw(exception)` `_throw_(exception)`
+  `$throw(exception)`
 * Return as expression with finally and synchronized support: `_return()`
-  `_return(value)` `$return()` `$return(value)`
+  `_return(value)` `_return_()` `_return_(value)` `$return(value)`
 * Elvis operator with short circuit: `$elvis(value1, value2, ...)` or `$`
 * Scope functions: `_void`, `_run`, `_also`, `_with`, `$also`, `$with`
 * Safe member access: `$safe(getUser().getName())` or `$`
@@ -63,9 +64,9 @@ The latest version numbers can be checked here:
 For the bottom type, there are currently two implementations:
 
 * `_func`: returns `<T> T` to use in expressions
-* `$func`: returns `RuntimeException` so as to `throw $func()`
+* `_func_`: returns `RuntimeException` so as to `throw _func_()`
 
-`$` is not only used to note `RuntimeException`, but also "null-safety related".
+`$` is used to note "null-safety related".
 
 And you can also combine them as you want!
 

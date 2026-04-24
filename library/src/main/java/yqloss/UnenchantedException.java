@@ -10,4 +10,7 @@ package yqloss;
  * <a href="https://ench.yqlo.ss/">reporting an issue</a>.
  */
 public class UnenchantedException extends RuntimeException {
+  public UnenchantedException() {}
+
+  public UnenchantedException(Object object) {}
 }

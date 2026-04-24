@@ -25,11 +25,10 @@ public enum ReturnPass implements Pass {
   private TryCatchBlockNode locateFinally(List<TryCatchBlockNode> finallyBlocks, Set<Label> visitedLabels) {
     return finallyBlocks.stream().filter(
       it -> it.type == null
-        && visitedLabels.contains(it.start.getLabel())
-        && !visitedLabels.contains(it.end.getLabel())
+            && visitedLabels.contains(it.start.getLabel())
+            && !visitedLabels.contains(it.end.getLabel())
     ).findFirst().orElse(null);
   }
-
 
   @Override
   public boolean accept(ClassNode cn) {
@@ -64,14 +63,25 @@ public enum ReturnPass implements Pass {
           continue;
         }
 
-        if (insn instanceof MethodInsnNode min
+        if (
+          insn instanceof MethodInsnNode min
           && min.getOpcode() == Opcodes.INVOKESTATIC
           && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && ("_return".equals(min.name) || "$return".equals(min.name))
+          && switch (min.name) {
+            case "_return", "_return_", "$return" -> true;
+            default -> false;
+          }
         ) {
+          var nullable = "$return".equals(min.name);
+          var label = new LabelNode();
           var params = TypeConverter.extractParameters(min.desc);
           modified = true;
           iter.remove();
+
+          if (nullable) {
+            iter.add(new InsnNode(Opcodes.DUP));
+            iter.add(new JumpInsnNode(Opcodes.IFNULL, label));
+          }
 
           var finallyBlock = locateFinally(finallyBlocks, visitedLabels);
           if (finallyBlock == null) {
@@ -129,6 +139,10 @@ public enum ReturnPass implements Pass {
             mn.tryCatchBlocks.add(0, new TryCatchBlockNode(labelBegin, labelEnd, finallyBlock.handler, null));
             needToHookFinally = true;
           }
+
+          if (nullable) {
+            iter.add(label);
+          }
         }
       }
 
@@ -147,9 +161,9 @@ public enum ReturnPass implements Pass {
           }
 
           if (insn instanceof VarInsnNode
-            && insn.getOpcode() == Opcodes.ALOAD
-            && AsmHelper.nextExecutable(insn) instanceof InsnNode nextInsn
-            && nextInsn.getOpcode() == Opcodes.ATHROW
+              && insn.getOpcode() == Opcodes.ALOAD
+              && AsmHelper.nextExecutable(insn) instanceof InsnNode nextInsn
+              && nextInsn.getOpcode() == Opcodes.ATHROW
           ) {
             var finallyBlock = locateFinally(finallyBlocks, visitedLabels2);
             var jumpTo = finallyBlock == null ? returnLabel : finallyBlock.handler;

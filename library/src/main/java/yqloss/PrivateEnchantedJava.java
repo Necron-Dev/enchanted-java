@@ -24,6 +24,10 @@ class PrivateEnchantedJava {
 
   protected static int internal0 = 0;
 
+  protected static void unpure() {
+    internalFalse = false;
+  }
+
   /**
    * Provides a leading "false" anchor for chained OR ({@code ||}) logical
    * expressions to simplify reordering or commenting lines. Effectively
@@ -106,7 +110,9 @@ class PrivateEnchantedJava {
    * else handle(event);
    * }</pre>
    */
-  public static void _pass() {}
+  public static void _pass() {
+    unpure();
+  }
 
   /**
    * Throws a {@link Throwable} within an expression context, such as a ternary
@@ -127,23 +133,24 @@ class PrivateEnchantedJava {
    * @return this method never returns normally.
    */
   public static <T> T _throw(Throwable throwable) {
-    throw new UnenchantedException();
+    unpure();
+    throw new UnenchantedException(throwable.hashCode());
   }
 
   /**
-   * Throws a {@link Throwable}, designed to be used as {@code throw $throw(e)}.
-   * While the {@code throw} keyword satisfies Java's reachability analysis, the
-   * Gradle plugin transforms the {@code $throw()} call into a direct
-   * {@code athrow} instruction. Execution is terminated by the method call
-   * itself, meaning the outer {@code throw} is never executed. This approach
-   * allows any exception to be thrown without adding it to the method's
-   * {@code throws} signature.
+   * Throws a {@link Throwable}, designed to be used as
+   * {@code throw _throw_(e)}. While the {@code throw} keyword satisfies Java's
+   * reachability analysis, the Gradle plugin transforms the {@code _throw_()}
+   * call into a direct {@code athrow} instruction. Execution is terminated by
+   * the method call itself, meaning the outer {@code throw} is never executed.
+   * This approach allows any exception to be thrown without adding it to the
+   * method's {@code throws} signature.
    * <p>
    * <b>Examples:</b>
    * <pre>{@code
    * // Sneaky throw: throwing a checked exception without a throws clause
    * public void runTask() {
-   *     throw $throw(new Exception("Checked exception"));
+   *     throw _throw_(new Exception("Checked exception"));
    * }
    * }</pre>
    *
@@ -151,8 +158,38 @@ class PrivateEnchantedJava {
    * @return a placeholder {@link RuntimeException} to satisfy Java's
    * {@code throw} syntax.
    */
-  public static RuntimeException $throw(Throwable throwable) {
-    throw new UnenchantedException();
+  public static RuntimeException _throw_(Throwable throwable) {
+    unpure();
+    throw new UnenchantedException(throwable.hashCode());
+  }
+
+  /**
+   * Conditionally throws an exception if the provided {@code throwable} is
+   * non-null.
+   * <p>
+   * This method acts as a conditional control-flow anchor. If the argument is
+   * {@code null}, the method performs no operation and returns {@code null},
+   * allowing the execution to continue. If the argument is <b>non-null</b>, the
+   * Gradle plugin transforms this call into a direct {@code athrow}
+   * instruction, terminating the execution immediately.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // If validator returns an error, throw it; otherwise, continue to process data
+   * $throw(validator.getError(input));
+   * process(input);
+   * }</pre>
+   * <p>
+   *
+   * @param throwable the potential exception to throw; if {@code null},
+   *                  execution continues.
+   * @param <T>       the inferred type to allow use in any expression.
+   * @return {@code null} if the input is {@code null}.
+   */
+  public static <T> T $throw(Throwable throwable) {
+    unpure();
+    if (throwable != null) throw new UnenchantedException();
+    return null;
   }
 
   /**
@@ -172,13 +209,14 @@ class PrivateEnchantedJava {
    * @return this method never returns normally.
    */
   public static <T> T _never() {
+    unpure();
     throw new UnenchantedException();
   }
 
   /**
    * Marks a code path as unreachable, designed to be used as
-   * {@code throw $never()}. While the {@code throw} keyword satisfies Java's
-   * reachability analysis, the Gradle plugin transforms the {@code $never()}
+   * {@code throw _never_()}. While the {@code throw} keyword satisfies Java's
+   * reachability analysis, the Gradle plugin transforms the {@code _never_()}
    * call into a direct {@link IllegalStateException} throw. Effectively,
    * execution is terminated by the method call itself, and the outer
    * {@code throw} is never executed. This approach allows for interrupting
@@ -190,13 +228,14 @@ class PrivateEnchantedJava {
    * for (var item : items) {
    *     if (process(item)) return;
    * }
-   * throw $never();
+   * throw _never_();
    * }</pre>
    *
    * @return a placeholder {@link RuntimeException} to satisfy Java's
    * {@code throw} syntax.
    */
-  public static RuntimeException $never() {
+  public static RuntimeException _never_() {
+    unpure();
     throw new UnenchantedException();
   }
 
@@ -220,12 +259,13 @@ class PrivateEnchantedJava {
    * @return this method never returns normally.
    */
   public static <T> T _return() {
+    unpure();
     throw new UnenchantedException();
   }
 
   /**
    * Performs a return from the current method, designed to be used as
-   * {@code throw $return()}. While the {@code throw} keyword satisfies Java's
+   * {@code throw _return_()}. While the {@code throw} keyword satisfies Java's
    * reachability analysis, the Gradle plugin replaces the call with a direct
    * return instruction. Execution is terminated by the method call itself,
    * ensuring full support for {@code finally} blocks and {@code synchronized}
@@ -237,7 +277,7 @@ class PrivateEnchantedJava {
    * <b>Examples:</b>
    * <pre>{@code
    * public void doWork() {
-   *   if (isDone()) throw $return();
+   *   if (isDone()) throw _return_();
    *   // ... rest of the logic
    * }
    * }</pre>
@@ -245,7 +285,8 @@ class PrivateEnchantedJava {
    * @return a placeholder {@link RuntimeException} to satisfy Java's
    * {@code throw} syntax.
    */
-  public static RuntimeException $return() {
+  public static RuntimeException _return_() {
+    unpure();
     throw new UnenchantedException();
   }
 
@@ -278,12 +319,13 @@ class PrivateEnchantedJava {
    * @return this method never returns normally.
    */
   public static <T> T _return(Object value) {
+    unpure();
     throw new UnenchantedException();
   }
 
   /**
    * Performs a return with a value from the current method, designed to be used
-   * as {@code throw $return(value)}. The Gradle plugin transforms this call
+   * as {@code throw _return_(value)}. The Gradle plugin transforms this call
    * into a direct return instruction, handling {@code finally} and
    * {@code synchronized} blocks correctly. The outer {@code throw} is never
    * executed, but serves to satisfy the compiler's return requirements.
@@ -302,7 +344,7 @@ class PrivateEnchantedJava {
    * <b>Examples:</b>
    * <pre>{@code
    * public int getValue(boolean flag) {
-   *     if (flag) throw $return(1); // Exact match for Integer wrapper
+   *     if (flag) throw _return_(1); // Exact match for Integer wrapper
    *     return 0;
    * }
    * }</pre>
@@ -311,8 +353,44 @@ class PrivateEnchantedJava {
    * @return a placeholder {@link RuntimeException} to satisfy Java's
    * {@code throw} syntax.
    */
-  public static RuntimeException $return(Object value) {
+  public static RuntimeException _return_(Object value) {
+    unpure();
     throw new UnenchantedException();
+  }
+
+  /**
+   * Conditionally performs a return from the current method if the provided
+   * {@code value} is non-null.
+   * <p>
+   * If the {@code value} is {@code null}, this method returns {@code null} and
+   * the execution of the parent method continues. If the {@code value} is
+   * <b>non-null</b>, the Gradle plugin replaces this call with a return
+   * instruction, effectively exiting the parent method with that value. It
+   * provides full support for {@code finally} blocks and {@code synchronized}
+   * monitors.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Early exit if a cached value is found, otherwise compute it
+   * $return(cache.get(key));
+   * var newValue = compute(key);
+   * }</pre>
+   * <p>
+   * <b>Transformation Logic:</b>
+   * <p>
+   * The Gradle plugin injects a null-check and a conditional return. The same
+   * type-casting and {@code void} ignoring rules as {@link #_return(Object)}
+   * apply.
+   *
+   * @param value the value to potentially return; if {@code null}, execution
+   *              continues.
+   * @param <T>   the inferred type to allow use in any expression.
+   * @return {@code null} if the input is {@code null}.
+   */
+  public static <T> T $return(Object value) {
+    unpure();
+    if (value != null) throw new UnenchantedException();
+    return null;
   }
 
   /**
@@ -345,6 +423,7 @@ class PrivateEnchantedJava {
    */
   @SafeVarargs
   public static <T> T $elvis(T... values) {
+    unpure();
     return values[internal0];
   }
 
@@ -355,6 +434,7 @@ class PrivateEnchantedJava {
    */
   @SafeVarargs
   public static <T> T $(T... values) {
+    unpure();
     return values[internal0];
   }
 
@@ -376,6 +456,7 @@ class PrivateEnchantedJava {
    * @return {@code null} after executing the block.
    */
   public static <T> T _void(Runnable fn) {
+    unpure();
     fn.run();
     return null;
   }
@@ -399,6 +480,7 @@ class PrivateEnchantedJava {
    * @return the value returned by the supplier.
    */
   public static <T> T _run(Supplier<T> fn) {
+    unpure();
     return fn.get();
   }
 
@@ -421,6 +503,7 @@ class PrivateEnchantedJava {
    * @return the original {@code object}.
    */
   public static <T> T _also(T object, Consumer<T> fn) {
+    unpure();
     fn.accept(object);
     return object;
   }
@@ -447,6 +530,7 @@ class PrivateEnchantedJava {
    * @return the result of applying the function to the object.
    */
   public static <T, R> R _with(T object, Function<T, R> fn) {
+    unpure();
     return fn.apply(object);
   }
 
@@ -476,6 +560,7 @@ class PrivateEnchantedJava {
    * {@code null}.
    */
   public static <T> T $also(T object, Consumer<T> fn) {
+    unpure();
     if (object != null) fn.accept(object);
     return object;
   }
@@ -506,6 +591,7 @@ class PrivateEnchantedJava {
    * {@code null}.
    */
   public static <T, R> R $with(T object, Function<T, R> fn) {
+    unpure();
     return object == null ? null : fn.apply(object);
   }
 
@@ -555,6 +641,7 @@ class PrivateEnchantedJava {
    * or invalid cast is encountered.
    */
   public static <T> T $safe(T expr) {
+    unpure();
     return internalFalse ? expr : null;
   }
 
@@ -564,6 +651,7 @@ class PrivateEnchantedJava {
    * @see #$safe
    */
   public static <T> T $(T expr) {
+    unpure();
     return internalFalse ? expr : null;
   }
 
@@ -597,6 +685,7 @@ class PrivateEnchantedJava {
    * @see #$safe(Object)
    */
   public static <T> T $unsafe(T expr) {
+    unpure();
     return expr;
   }
 }
