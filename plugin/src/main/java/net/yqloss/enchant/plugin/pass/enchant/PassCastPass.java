@@ -6,7 +6,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
-public enum PassPass implements Pass {
+public enum PassCastPass implements Pass {
   Instance;
 
   @Override
@@ -15,10 +15,11 @@ public enum PassPass implements Pass {
     for (var mn : cn.methods) {
       var iter = mn.instructions.iterator();
       while (iter.hasNext()) {
-        if (iter.next() instanceof MethodInsnNode min
+        if (
+          iter.next() instanceof MethodInsnNode min
           && min.getOpcode() == Opcodes.INVOKESTATIC
           && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && "_pass".equals(min.name)
+          && ("_pass".equals(min.name) || "_cast".equals(min.name))
         ) {
           modified = true;
           iter.remove();

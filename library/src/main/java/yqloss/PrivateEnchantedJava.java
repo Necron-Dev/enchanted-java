@@ -688,4 +688,8 @@ class PrivateEnchantedJava {
     unpure();
     return expr;
   }
+
+  public static <T> T _cast(Object object) {
+    return (T) object;
+  }
 }
