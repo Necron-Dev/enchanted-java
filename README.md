@@ -60,6 +60,7 @@ The latest version numbers can be checked here:
 * Elvis operator with short circuit: `$elvis(value1, value2, ...)` or `$`
 * Scope functions: `_void`, `_run`, `_also`, `_with`, `$also`, `$with`
 * Safe member access: `$safe(getUser().getName())` or `$`
+* Unchecked cast without warning: `_cast(value)`
 
 For the bottom type, there are currently two implementations:
 

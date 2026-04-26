@@ -689,6 +689,34 @@ class PrivateEnchantedJava {
     return expr;
   }
 
+  /**
+   * Suppresses compiler warnings in generic contexts where type safety is
+   * guaranteed by logic but cannot be formally proven by the Java compiler.
+   * <p>
+   * This method is a placeholder for a Gradle plugin transformation that
+   * entirely removes the method call from the bytecode. It serves exclusively
+   * to provide a clean, expression-level alternative to
+   * {@code @SuppressWarnings} or messy manual casting.
+   * <p>
+   * Since the Java compiler automatically inserts a {@code CHECKCAST}
+   * instruction at the call site of generic methods to ensure the result
+   * matches the inferred type {@code T}, removing this call allows the native
+   * casting mechanism to take over with <b>zero runtime overhead</b>. Use this
+   * method only when the type conversion is known to be safe.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Suppresses warnings when casting from a raw type or Object in a chain
+   * Element element = _cast(list.get(0));
+   *
+   * // Cleanly handle generic mapped values without @SuppressWarnings blocks
+   * return _cast(context.get("key"));
+   * }</pre>
+   *
+   * @param object the object to be treated as type {@code T}.
+   * @param <T>    the target generic type inferred from the context.
+   * @return the object, treated as type {@code T} by the compiler.
+   */
   public static <T> T _cast(Object object) {
     return (T) object;
   }
