@@ -53,6 +53,7 @@ public class Enchanter {
           return c.getName().replace('.', '/');
         } catch (Exception e) {
           System.err.printf("couldn't find common super class for %s and %s\n", type1, type2);
+          e.printStackTrace();
           return "java/lang/Object";
         }
       }

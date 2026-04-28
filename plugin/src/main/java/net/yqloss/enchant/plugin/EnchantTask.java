@@ -16,6 +16,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.stream.Stream;
 
 @CacheableTask
 public abstract class EnchantTask extends DefaultTask {
@@ -37,17 +38,19 @@ public abstract class EnchantTask extends DefaultTask {
     if (!inputDir.isPresent() || !inputDir.get().getAsFile().exists()) return;
     var outputDir = getOutputDirectory().get().getAsFile();
     var classLoader = new URLClassLoader(
-      getClasspath()
-        .getFiles()
-        .stream()
-        .map(x -> {
-          try {
-            return x.toURI().toURL();
-          } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-          }
-        })
-        .toArray(URL[]::new),
+      Stream.concat(
+        Stream.of(inputDir.get().getAsFile().toURI().toURL()),
+        getClasspath()
+          .getFiles()
+          .stream()
+          .map(x -> {
+            try {
+              return x.toURI().toURL();
+            } catch (MalformedURLException e) {
+              throw new RuntimeException(e);
+            }
+          })
+      ).toArray(URL[]::new),
       getClass().getClassLoader()
     );
     for (var change : inputChanges.getFileChanges(inputDir)) {
