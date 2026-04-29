@@ -2,6 +2,7 @@ package net.yqloss.enchant.plugin.pass;
 
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.analysis.Frame;
 import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
 
@@ -71,6 +72,10 @@ public class AsmHelper {
       node = node.getPrevious();
     } while (node != null && node.getOpcode() <= 0);
     return node;
+  }
+
+  public static int getStackSize(Frame<?> frame) {
+    return frame == null ? -1 : frame.getStackSize();
   }
 
   public static void debugMethod(MethodNode mn) {

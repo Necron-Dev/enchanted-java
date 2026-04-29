@@ -1,6 +1,7 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
 import net.yqloss.enchant.plugin.Enchanter;
+import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.ThrowHelper;
 import org.objectweb.asm.Opcodes;
@@ -58,12 +59,13 @@ public enum SafePass implements Pass {
             var labelNotInstance = new LabelNode();
             analyzed.set(i, new AnalyzedInsn(label, item.frame));
 
-            var depth = item.frame.getStackSize();
+            var depth = AsmHelper.getStackSize(item.frame);
+            if (depth == -1) continue;
             var operations = new ArrayList<Integer>();
 
             for (var j = i; j >= 0; j--) {
               var jtem = analyzed.get(j);
-              var jDepth = jtem.frame.getStackSize();
+              var jDepth = AsmHelper.getStackSize(jtem.frame);
               if (jDepth < depth) break;
 
               if (depth == jDepth) {

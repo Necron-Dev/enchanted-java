@@ -71,7 +71,8 @@ public enum ElvisPass implements Pass {
                 throw th.raise("it is not allowed to invoke elvis without arguments; replace it with null");
               }
 
-              var depth = item.frame.getStackSize();
+              var depth = AsmHelper.getStackSize(item.frame);
+              if (depth == -1) continue;
               var pointer = i;
               var args = new ArrayList<Range>();
 
@@ -79,7 +80,7 @@ public enum ElvisPass implements Pass {
               for (; ; ) {
                 var j = pointer - 1;
                 for (; j >= 0; j--) {
-                  if (depth == analyzed.get(j).frame.getStackSize()) {
+                  if (depth == AsmHelper.getStackSize(analyzed.get(j).frame)) {
                     do j--;
                     while (j >= 0 && analyzed.get(j).insn.getOpcode() <= 0);
                     j++;
