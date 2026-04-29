@@ -7,7 +7,6 @@
 
 pluginManagement {
   repositories {
-    mavenCentral() // ASM
     maven("https://maven.yqloss.net") // The plugin
   }
 }
@@ -34,6 +33,15 @@ dependencies {
 
 import static yqloss.E.*;
 ```
+
+If you want to use hot reload, add the following JVM arguments:
+
+```text
+-javaagent:"path/to/your/enchanted-java-plugin.jar"
+-Dyqloss.enchant.prefixes=com.example.package1.,com/example/package2/
+```
+
+Only classes with the specified prefixes will be transformed.
 
 The latest version numbers can be checked here:
 
