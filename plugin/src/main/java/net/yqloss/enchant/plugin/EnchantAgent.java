@@ -4,6 +4,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
+import java.util.Objects;
 
 public final class EnchantAgent {
   private EnchantAgent() {
@@ -33,7 +34,18 @@ public final class EnchantAgent {
         if (className == null || !matches(prefixes, className)) return null;
 
         try {
-          return Enchanter.enchant(classfileBuffer, loader);
+          return Enchanter.enchant(
+            classfileBuffer,
+            new ClassLoader(loader) {
+              @Override
+              protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+                if (Objects.equals(name.replace('.', '/'), className)) {
+                  return classBeingRedefined;
+                }
+                return super.loadClass(name, resolve);
+              }
+            }
+          );
         } catch (Throwable throwable) {
           System.err.printf("failed to enchant %s%n", className);
           throwable.printStackTrace();

@@ -103,7 +103,7 @@ class PrivateEnchantedJava {
    * value.
    */
   public static UUID _id = UUID.randomUUID();
-  
+
   /**
    * Performs no operation (No-op), serving as an explicit placeholder for empty
    * loops, branches, or method bodies to signal intentional inactivity. This
