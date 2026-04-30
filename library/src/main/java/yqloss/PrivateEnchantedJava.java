@@ -94,8 +94,16 @@ class PrivateEnchantedJava {
    */
   public static boolean _switch = false;
 
+  /**
+   * Provides a compile-time token for generating a unique {@link UUID} constant
+   * at each reference site. The Gradle plugin replaces every access to this
+   * field with a read from a newly generated internal static UUID field on the
+   * transformed class. That generated field is initialized with a random UUID
+   * during transformation, giving each {@code _id} usage its own stable runtime
+   * value.
+   */
   public static UUID _id = UUID.randomUUID();
-
+  
   /**
    * Performs no operation (No-op), serving as an explicit placeholder for empty
    * loops, branches, or method bodies to signal intentional inactivity. This
