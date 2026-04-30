@@ -7,6 +7,7 @@ import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
 
 import java.io.PrintWriter;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -37,6 +38,7 @@ public class AsmHelper {
   }
 
   public static void createInternalField(ClassNode cn, String name, String desc, Consumer<Consumer<AbstractInsnNode>> initializer) {
+    cn.fields.removeIf(x -> Objects.equals(x.name, name));
     cn.fields.add(new FieldNode(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC | Opcodes.ACC_TRANSIENT,
       name, desc, null, null

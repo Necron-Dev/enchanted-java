@@ -1,5 +1,6 @@
 package yqloss;
 
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -92,6 +93,8 @@ class PrivateEnchantedJava {
    * @see #_all
    */
   public static boolean _switch = false;
+
+  public static UUID _id = UUID.randomUUID();
 
   /**
    * Performs no operation (No-op), serving as an explicit placeholder for empty
