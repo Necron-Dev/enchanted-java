@@ -10,7 +10,7 @@ public enum PassCastPass implements Pass {
   Instance;
 
   @Override
-  public boolean accept(ClassNode cn) {
+  public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
     for (var mn : cn.methods) {
       var iter = mn.instructions.iterator();

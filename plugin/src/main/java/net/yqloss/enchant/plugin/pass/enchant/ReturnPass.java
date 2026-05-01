@@ -31,7 +31,7 @@ public enum ReturnPass implements Pass {
   }
 
   @Override
-  public boolean accept(ClassNode cn) {
+  public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
     var needToCacheThrowable = false;
     var cachedThrowable = AsmHelper.findUniqueName(

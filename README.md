@@ -70,6 +70,7 @@ The latest version numbers can be checked here:
 * Safe member access: `$safe(getUser().getName())` or `$`
 * Unchecked cast without warning: `_cast(value)`
 * Compile-time random UUID for identifiers: `_id`
+* Compile-time computations: `_const(() -> expr)`
 
 For the bottom type, there are currently two implementations:
 

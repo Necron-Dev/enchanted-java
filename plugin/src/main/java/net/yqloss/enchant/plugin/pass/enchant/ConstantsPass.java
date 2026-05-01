@@ -14,7 +14,7 @@ public enum ConstantsPass implements Pass {
   Instance;
 
   @Override
-  public boolean accept(ClassNode cn) {
+  public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
     var uuidMap = new HashMap<String, UUID>();
     for (var mn : cn.methods) {

@@ -490,7 +490,7 @@ class PrivateEnchantedJava {
    * @param <T> the type of the result.
    * @return the value returned by the supplier.
    */
-  public static <T> T _run(Supplier<T> fn) {
+  public static <T> T _run(Supplier<? extends T> fn) {
     unpure();
     return fn.get();
   }
@@ -513,7 +513,7 @@ class PrivateEnchantedJava {
    * @param <T>    the type of the object.
    * @return the original {@code object}.
    */
-  public static <T> T _also(T object, Consumer<T> fn) {
+  public static <T> T _also(T object, Consumer<? super T> fn) {
     unpure();
     fn.accept(object);
     return object;
@@ -540,7 +540,7 @@ class PrivateEnchantedJava {
    * @param <R>    the type of the result.
    * @return the result of applying the function to the object.
    */
-  public static <T, R> R _with(T object, Function<T, R> fn) {
+  public static <T, R> R _with(T object, Function<? super T, ? extends R> fn) {
     unpure();
     return fn.apply(object);
   }
@@ -570,7 +570,7 @@ class PrivateEnchantedJava {
    * @return the original {@code object}, or {@code null} if the input was
    * {@code null}.
    */
-  public static <T> T $also(T object, Consumer<T> fn) {
+  public static <T> T $also(T object, Consumer<? super T> fn) {
     unpure();
     if (object != null) fn.accept(object);
     return object;
@@ -601,7 +601,7 @@ class PrivateEnchantedJava {
    * @return the transformed result, or {@code null} if the input was
    * {@code null}.
    */
-  public static <T, R> R $with(T object, Function<T, R> fn) {
+  public static <T, R> R $with(T object, Function<? super T, ? extends R> fn) {
     unpure();
     return object == null ? null : fn.apply(object);
   }
@@ -730,5 +730,57 @@ class PrivateEnchantedJava {
    */
   public static <T> T _cast(Object object) {
     return (T) object;
+  }
+
+  /**
+   * Computes a value at transformation time and embeds it as a generated static
+   * constant field in the transformed class.
+   * <p>
+   * This method is a compile-time token. The Gradle plugin replaces each call
+   * with a read from a newly generated internal static field. During
+   * transformation, the supplied lambda is executed once, its result is
+   * serialized into that generated field, and the original {@code _const} call
+   * is removed. Even if the expression produces a different value on each
+   * execution, such as {@link UUID#randomUUID()}, the generated field keeps the
+   * value computed during transformation and will not change at runtime.
+   * <p>
+   * <b>Usage Constraint:</b> the supplier must be a lambda without captures.
+   * Capturing local variables, instance state, or otherwise producing a lambda
+   * that cannot be resolved to a no-argument static lambda body will fail
+   * during the plugin transformation phase.
+   * <p>
+   * <b>Supported Values:</b>
+   * <ul>
+   *   <li>{@code null}</li>
+   *   <li>boxed primitive values: {@link Boolean}, {@link Byte},
+   *       {@link Short}, {@link Integer}, {@link Long}, {@link Float},
+   *       {@link Double}, and {@link Character}</li>
+   *   <li>{@link String}; long strings are split into loadable chunks and
+   *       rebuilt with {@link StringBuilder}</li>
+   *   <li>primitive arrays</li>
+   *   <li>{@code byte[]}; bytes are stored as a Base64 string and decoded when
+   *       the generated field is initialized</li>
+   *   <li>object arrays whose elements are themselves supported values</li>
+   * </ul>
+   * <p>
+   * Unsupported values fail during transformation with an
+   * {@link UnsupportedOperationException}.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * private static final String NAME = _const(() -> "enchanted");
+   *
+   * private static final String BUILD_ID = _const(() -> UUID.randomUUID().toString());
+   *
+   * private static final int[] TABLE = _const(() -> new int[] {1, 1, 2, 3, 5});
+   * }</pre>
+   *
+   * @param expr the capture-free supplier to execute during transformation.
+   * @param <T>  the type of the computed constant value.
+   * @return the computed value, loaded from the generated static field after
+   * transformation.
+   */
+  public static <T> T _const(Supplier<? extends T> expr) {
+    return expr.get();
   }
 }

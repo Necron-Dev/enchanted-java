@@ -26,18 +26,21 @@ public class Enchanter {
     NeverPass.Instance,
     ThrowPass.Instance,
     ReturnPass.Instance,
+    CompileTimePass.Instance,
     CheckerPass.Instance
   );
 
   public static final List<Pass> OptimizePasses = List.of(
   );
 
-  public static byte[] enchant(byte[] original, ClassLoader classLoader) {
-    var cr = new ClassReader(original);
+  public static ClassNode bytesToClassNode(byte[] data) {
+    var cr = new ClassReader(data);
     var cn = new ClassNode();
     cr.accept(cn, 0);
-    EnchantPasses.forEach(pass -> pass.accept(cn));
-    while (OptimizePasses.stream().anyMatch(pass -> pass.accept(cn))) ;
+    return cn;
+  }
+
+  public static byte[] classNodeToBytes(ClassNode cn, ClassLoader classLoader) {
     var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES) {
       @Override
       protected String getCommonSuperClass(String type1, String type2) {
@@ -60,5 +63,13 @@ public class Enchanter {
     };
     cn.accept(cw);
     return cw.toByteArray();
+  }
+
+  public static byte[] enchant(byte[] original, ClassLoader classLoader) {
+    var cn = bytesToClassNode(original);
+    EnchantPasses.forEach(pass -> pass.accept(cn, classLoader));
+    while (OptimizePasses.stream().anyMatch(pass -> pass.accept(cn, classLoader)))
+      ;
+    return classNodeToBytes(cn, classLoader);
   }
 }

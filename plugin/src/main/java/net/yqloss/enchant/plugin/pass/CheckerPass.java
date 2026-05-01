@@ -10,7 +10,7 @@ public enum CheckerPass implements Pass {
   Instance;
 
   @Override
-  public boolean accept(ClassNode cn) {
+  public boolean accept(ClassNode cn, ClassLoader classLoader) {
     for (var mn : cn.methods) {
       var th = new ThrowHelper("checker", cn, mn);
       for (var insn : mn.instructions) {

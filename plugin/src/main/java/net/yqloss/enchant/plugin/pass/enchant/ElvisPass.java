@@ -28,7 +28,7 @@ public enum ElvisPass implements Pass {
   }
 
   @Override
-  public boolean accept(ClassNode cn) {
+  public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
     var analyzer = new Analyzer<>(new BasicInterpreter());
 

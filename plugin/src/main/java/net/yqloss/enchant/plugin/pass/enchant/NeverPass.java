@@ -9,15 +9,15 @@ public enum NeverPass implements Pass {
   Instance;
 
   @Override
-  public boolean accept(ClassNode cn) {
+  public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
     for (var mn : cn.methods) {
       var iter = mn.instructions.iterator();
       while (iter.hasNext()) {
         if (iter.next() instanceof MethodInsnNode min
-          && min.getOpcode() == Opcodes.INVOKESTATIC
-          && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && ("_never".equals(min.name) || "$never".equals(min.name))
+            && min.getOpcode() == Opcodes.INVOKESTATIC
+            && Enchanter.EnchantedJavaClasses.contains(min.owner)
+            && ("_never".equals(min.name) || "$never".equals(min.name))
         ) {
           modified = true;
           iter.remove();

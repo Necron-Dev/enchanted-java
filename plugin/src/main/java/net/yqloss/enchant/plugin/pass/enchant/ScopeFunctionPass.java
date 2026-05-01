@@ -10,7 +10,7 @@ public enum ScopeFunctionPass implements Pass {
   Instance;
 
   @Override
-  public boolean accept(ClassNode cn) {
+  public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
     for (var mn : cn.methods) {
       var th = new ThrowHelper("scope-function", cn, mn);
