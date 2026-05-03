@@ -1,5 +1,9 @@
 package yqloss;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -815,5 +819,33 @@ public final class E {
    */
   public static <T> T _property(String name) {
     return unknown();
+  }
+
+  public static <T> T _defaultArgs() {
+    unpure();
+    return unknown();
+  }
+
+  public static <T> T _arg() {
+    unpure();
+    return unknown();
+  }
+
+  @Retention(RetentionPolicy.CLASS)
+  @Target(ElementType.TYPE)
+  public @interface ArgClass {
+    Class<?> value();
+  }
+
+  @Retention(RetentionPolicy.CLASS)
+  @Target(ElementType.PARAMETER)
+  public @interface Default {
+    String value() default "";
+  }
+
+  @Retention(RetentionPolicy.CLASS)
+  @Target({ElementType.METHOD, ElementType.PARAMETER})
+  public @interface Name {
+    String value();
   }
 }

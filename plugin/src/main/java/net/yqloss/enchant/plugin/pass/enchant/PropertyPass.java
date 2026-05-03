@@ -1,6 +1,5 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.Enchanter;
 import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.Serializer;
@@ -30,9 +29,7 @@ public class PropertyPass implements Pass {
       while (iter.hasNext()) {
         if (
           iter.next() instanceof MethodInsnNode min
-          && min.getOpcode() == Opcodes.INVOKESTATIC
-          && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && "_property".equals(min.name)
+          && AsmHelper.isCallHook(min, "_property")
         ) {
           modified = true;
           iter.remove();

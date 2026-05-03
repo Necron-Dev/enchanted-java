@@ -1,6 +1,5 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.Enchanter;
 import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.ThrowHelper;
@@ -44,14 +43,7 @@ public enum SafePass implements Pass {
 
           if (
             item.insn instanceof MethodInsnNode min
-            && min.getOpcode() == Opcodes.INVOKESTATIC
-            && Enchanter.EnchantedJavaClasses.contains(min.owner)
-            && switch (min.name) {
-              case "$safe" -> true;
-              case "$" ->
-                "(Ljava/lang/Object;)Ljava/lang/Object;".equals(min.desc);
-              default -> false;
-            }
+            && AsmHelper.isCallHook(min, "$safe", "$(?)->?")
           ) {
             modified = true;
             modifiedMethod = true;
@@ -87,6 +79,7 @@ public enum SafePass implements Pass {
 
             var first = true;
 
+            loop:
             for (var operation : operations) {
               var insn = analyzed.get(operation - 1).insn;
 
@@ -107,24 +100,20 @@ public enum SafePass implements Pass {
 
                 if (
                   insn instanceof MethodInsnNode min2
-                  && min2.getOpcode() == Opcodes.INVOKESTATIC
-                  && Enchanter.EnchantedJavaClasses.contains(min2.owner)
+                  && AsmHelper.isCallHook(min2, "$safe", "$(?)->?", "$unsafe")
                 ) {
-                  if (
-                    switch (min2.name) {
-                      case "$safe" -> true;
-                      case "$" ->
-                        "(Ljava/lang/Object;)Ljava/lang/Object;".equals(min.desc);
-                      default -> false;
+                  switch (min2.name) {
+                    case "$safe", "$" -> {
+                      throw th.raise("$safe cannot be used directly in another $safe");
                     }
-                  ) {
-                    throw th.raise("$safe cannot be used directly in another $safe");
-                  }
 
-                  if ("$unsafe".equals(min2.name)) {
-                    analyzed.remove(operation - 1);
-                    i -= 1;
-                    break;
+                    case "$unsafe" -> {
+                      analyzed.remove(operation - 1);
+                      i -= 1;
+                      break loop;
+                    }
+
+                    default -> {}
                   }
                 }
               }

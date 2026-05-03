@@ -1,7 +1,7 @@
 package net.yqloss.enchant.plugin;
 
+import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.CheckerPass;
-import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.enchant.*;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -14,20 +14,6 @@ import java.util.Set;
 public class Enchanter {
   public static final Set<String> EnchantedJavaClasses = Set.of(
     "yqloss/E"
-  );
-
-  public static final List<Pass> EnchantPasses = List.of(
-    SafePass.Instance,
-    ElvisPass.Instance,
-    PassCastPass.Instance,
-    ConstantsPass.Instance,
-    ScopeFunctionPass.Instance,
-    NeverPass.Instance,
-    ThrowPass.Instance,
-    ReturnPass.Instance
-  );
-
-  public static final List<Pass> OptimizePasses = List.of(
   );
 
   public static ClassNode bytesToClassNode(byte[] data) {
@@ -64,12 +50,28 @@ public class Enchanter {
 
   public static byte[] enchant(byte[] original, ClassLoader classLoader, Map<String, ?> properties) {
     var cn = bytesToClassNode(original);
-    EnchantPasses.forEach(pass -> pass.accept(cn, classLoader));
-    new PropertyPass(properties).accept(cn, classLoader);
-    CompileTimePass.Instance.accept(cn, classLoader);
-    CheckerPass.Instance.accept(cn, classLoader);
-    while (OptimizePasses.stream().anyMatch(pass -> pass.accept(cn, classLoader)))
-      ;
-    return classNodeToBytes(cn, classLoader);
+    try {
+      List.of(
+        ArgPass.Instance,
+        DefaultArgsPass.Instance,
+        SafePass.Instance,
+        ElvisPass.Instance,
+        PassCastPass.Instance,
+        ConstantsPass.Instance,
+        ScopeFunctionPass.Instance,
+        NeverPass.Instance,
+        ThrowPass.Instance,
+        ReturnPass.Instance,
+        new PropertyPass(properties),
+        CompileTimePass.Instance,
+        TrimAnnotationPass.Instance,
+        CheckerPass.Instance
+      ).forEach(pass -> pass.accept(cn, classLoader));
+      return classNodeToBytes(cn, classLoader);
+    } catch (Exception exception) {
+      exception.printStackTrace();
+      AsmHelper.debugClass(cn);
+      throw exception;
+    }
   }
 }

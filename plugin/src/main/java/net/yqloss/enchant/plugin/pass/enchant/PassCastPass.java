@@ -1,8 +1,7 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.Enchanter;
+import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
-import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
@@ -17,9 +16,7 @@ public enum PassCastPass implements Pass {
       while (iter.hasNext()) {
         if (
           iter.next() instanceof MethodInsnNode min
-          && min.getOpcode() == Opcodes.INVOKESTATIC
-          && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && ("_pass".equals(min.name) || "_cast".equals(min.name))
+          && AsmHelper.isCallHook(min, "_pass", "_cast")
         ) {
           modified = true;
           iter.remove();

@@ -1,6 +1,6 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.Enchanter;
+import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.ThrowHelper;
 import org.objectweb.asm.Opcodes;
@@ -18,12 +18,10 @@ public enum ScopeFunctionPass implements Pass {
       while (iter.hasNext()) {
         if (
           iter.next() instanceof MethodInsnNode min
-          && min.getOpcode() == Opcodes.INVOKESTATIC
-          && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && switch (min.name) {
-            case "_void", "_run", "_also", "_with", "$also", "$with" -> true;
-            default -> false;
-          }
+          && AsmHelper.isCallHook(
+            min,
+            "_void", "_run", "_also", "_with", "$also", "$with"
+          )
         ) {
           modified = true;
           iter.remove();

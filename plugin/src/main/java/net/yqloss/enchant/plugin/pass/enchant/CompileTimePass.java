@@ -32,9 +32,7 @@ public enum CompileTimePass implements Pass {
       while (iter.hasNext()) {
         if (
           iter.next() instanceof MethodInsnNode min
-          && min.getOpcode() == Opcodes.INVOKESTATIC
-          && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && "_const".equals(min.name)
+          && AsmHelper.isCallHook(min, "_const")
         ) {
           modified = true;
           iter.remove();
@@ -83,7 +81,7 @@ public enum CompileTimePass implements Pass {
           try {
             return loader.load(name, resolve);
           } catch (Exception exception) {
-            throw new RuntimeException(exception);
+            // ignored
           }
         }
         throw new ClassNotFoundException();

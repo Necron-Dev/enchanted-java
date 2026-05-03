@@ -9,17 +9,14 @@ public record ThrowHelper(
   MethodNode mn
 ) {
   public UnsupportedOperationException raise(String desc, Object... params) {
-    return new UnsupportedOperationException(String.format(
-      "[%s] <%s.%s%s> %s",
-      module, cn.name, mn.name, mn.desc, String.format(desc, params)
-    ));
+    return raise(null, desc, params);
   }
 
   public UnsupportedOperationException raise(Throwable cause, String desc, Object... params) {
     return new UnsupportedOperationException(
       String.format(
-        "[%s] (%s.%s%s) %s",
-        module, cn.name, mn.name, mn.desc, String.format(desc, params)
+        "[%s] %s\n  in %s%s of %s",
+        module, String.format(desc, params), mn.name, mn.desc, cn.name
       ), cause
     );
   }

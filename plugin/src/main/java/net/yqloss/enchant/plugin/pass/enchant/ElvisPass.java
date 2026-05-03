@@ -1,6 +1,5 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.Enchanter;
 import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.ThrowHelper;
@@ -50,14 +49,7 @@ public enum ElvisPass implements Pass {
 
           if (
             item.insn instanceof MethodInsnNode min
-            && min.getOpcode() == Opcodes.INVOKESTATIC
-            && Enchanter.EnchantedJavaClasses.contains(min.owner)
-            && switch (min.name) {
-              case "$elvis" -> true;
-              case "$" ->
-                "([Ljava/lang/Object;)Ljava/lang/Object;".equals(min.desc);
-              default -> false;
-            }
+            && AsmHelper.isCallHook(min, "$elvis", "$([?])->?")
           ) {
             modified = true;
             modifiedMethod = true;

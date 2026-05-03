@@ -1,10 +1,9 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.Enchanter;
 import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.ThrowHelper;
-import net.yqloss.enchant.plugin.pass.TypeConverter;
+import net.yqloss.enchant.plugin.pass.TypeHelper;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -65,16 +64,11 @@ public enum ReturnPass implements Pass {
 
         if (
           insn instanceof MethodInsnNode min
-          && min.getOpcode() == Opcodes.INVOKESTATIC
-          && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && switch (min.name) {
-            case "_return", "_return_", "$return" -> true;
-            default -> false;
-          }
+          && AsmHelper.isCallHook(min, "_return", "_return_", "$return")
         ) {
           var nullable = "$return".equals(min.name);
           var label = new LabelNode();
-          var params = TypeConverter.extractParameters(min.desc);
+          var params = TypeHelper.extractParameters(min.desc);
           modified = true;
           iter.remove();
 
@@ -87,10 +81,10 @@ public enum ReturnPass implements Pass {
           if (finallyBlock == null) {
             switch (params) {
               case "" ->
-                TypeConverter.convert(th, iter::add, Type.VOID_TYPE, returnType);
+                TypeHelper.convert(iter::add, Type.VOID_TYPE, returnType);
 
               case "Ljava/lang/Object;" ->
-                TypeConverter.convert(th, iter::add, objectType, returnType);
+                TypeHelper.convert(iter::add, objectType, returnType);
 
               default ->
                 throw th.raise("unknown return signature %s%s", min.name, min.desc);
@@ -112,7 +106,7 @@ public enum ReturnPass implements Pass {
             } else {
               switch (params) {
                 case "" -> // throws because this convert never succeeds
-                  TypeConverter.convert(th, iter::add, Type.VOID_TYPE, returnType);
+                  TypeHelper.convert(iter::add, Type.VOID_TYPE, returnType);
 
                 case "Ljava/lang/Object;" ->
                   iter.add(new VarInsnNode(Opcodes.ASTORE, resultObject));
@@ -194,7 +188,7 @@ public enum ReturnPass implements Pass {
           list.add(new InsnNode(Opcodes.RETURN));
         } else {
           list.add(new VarInsnNode(Opcodes.ALOAD, resultObject));
-          TypeConverter.convert(th, list::add, objectType, returnType);
+          TypeHelper.convert(list::add, objectType, returnType);
           list.add(new InsnNode(returnType.getOpcode(Opcodes.IRETURN)));
         }
         mn.instructions.add(list);

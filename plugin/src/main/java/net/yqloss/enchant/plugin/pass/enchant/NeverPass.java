@@ -1,6 +1,6 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.Enchanter;
+import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
@@ -14,10 +14,9 @@ public enum NeverPass implements Pass {
     for (var mn : cn.methods) {
       var iter = mn.instructions.iterator();
       while (iter.hasNext()) {
-        if (iter.next() instanceof MethodInsnNode min
-            && min.getOpcode() == Opcodes.INVOKESTATIC
-            && Enchanter.EnchantedJavaClasses.contains(min.owner)
-            && ("_never".equals(min.name) || "$never".equals(min.name))
+        if (
+          iter.next() instanceof MethodInsnNode min
+          && AsmHelper.isCallHook(min, "_never", "_never_")
         ) {
           modified = true;
           iter.remove();

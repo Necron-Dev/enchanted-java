@@ -1,6 +1,6 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.Enchanter;
+import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
@@ -16,12 +16,7 @@ public enum ThrowPass implements Pass {
       while (iter.hasNext()) {
         if (
           iter.next() instanceof MethodInsnNode min
-          && min.getOpcode() == Opcodes.INVOKESTATIC
-          && Enchanter.EnchantedJavaClasses.contains(min.owner)
-          && switch (min.name) {
-            case "_throw", "_throw_", "$throw" -> true;
-            default -> false;
-          }
+          && AsmHelper.isCallHook(min, "_throw", "_throw_", "$throw")
         ) {
           var nullable = "$throw".equals(min.name);
           var label = new LabelNode();
