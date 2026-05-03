@@ -821,31 +821,291 @@ public final class E {
     return unknown();
   }
 
+  /**
+   * Marks a varargs overload as the named-argument entry point for another
+   * method or constructor in the same class.
+   * <p>
+   * The Gradle plugin replaces the body of a method containing this token with
+   * bytecode that reads an array of argument records, fills the backing method's
+   * parameters by name, computes missing parameters annotated with
+   * {@link Default}, and delegates to the backing method. Duplicate argument
+   * names, unknown names, {@code null} argument records, and missing required
+   * arguments fail with {@link IllegalArgumentException}.
+   * <p>
+   * The generated overload must take exactly one varargs parameter whose element
+   * type is the argument record class. By default that record is an inner class
+   * named {@code Arg}; otherwise annotate the enclosing class with
+   * {@link ArgClass}. The record must be public and expose the canonical
+   * constructor and accessors for {@code name} and {@code value}:
+   * <pre>{@code
+   * public class Example {
+   *   public record Arg(String name, Object value) {}
+   * }
+   * }</pre>
+   * <p>
+   * The backing method is found by name. For a varargs method named
+   * {@code f(Arg... args)}, the backing method is normally {@code f(...)}. If the
+   * generated overload or backing method uses a different Java name, annotate it
+   * with {@link Name @Name("logicalName")}. Parameter names are read from debug
+   * local-variable information, or from {@link Name} on each parameter when debug
+   * information is unavailable or a different public argument name is desired.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * public class Main {
+   *   public record Arg(String name, Object value) {}
+   *
+   *   public static void f(float a, @Default short b) {
+   *     System.out.println(a);
+   *     System.out.println(b);
+   *   }
+   *
+   *   // Default value provider for parameter b. It may depend on already-filled
+   *   // parameters by accepting parameters with matching names and types.
+   *   public static short f$b(float a) {
+   *     return (short) a;
+   *   }
+   *
+   *   public static void f(Arg... args) {
+   *     _defaultArgs();
+   *   }
+   *
+   *   public static Arg _a(float value) {
+   *     return _arg();
+   *   }
+   *
+   *   public static Arg _b(short value) {
+   *     return _arg();
+   *   }
+   *
+   *   public static void main(String... args) {
+   *     f(_a(1));              // b defaults to (short) a
+   *     f(_a(1), _b((short) 2));
+   *   }
+   * }
+   * }</pre>
+   *
+   * @param <T> the return type of the backing method.
+   * @return the value returned by the backing method after transformation.
+   * @see #_arg()
+   * @see Default
+   * @see ArgClass
+   * @see Name
+   */
   public static <T> T _defaultArgs() {
     unpure();
     return unknown();
   }
 
+  /**
+   * Marks a single-parameter static helper as a named-argument constructor for
+   * use with a {@link #_defaultArgs()} overload.
+   * <p>
+   * The Gradle plugin replaces the helper body with construction of the
+   * enclosing class's argument record. The helper must be {@code static}, must
+   * take exactly one value parameter, and must return the configured argument
+   * record type: the enclosing class's {@code Arg} record by default, or the
+   * type declared with {@link ArgClass}. The generated record value stores the
+   * argument name and the boxed helper parameter value.
+   * <p>
+   * By default, the argument name is the part of the helper method name after
+   * the last underscore. For example, {@code _count(int value)} produces an
+   * argument named {@code "count"}. Use {@link Name} on the helper method when
+   * the Java method name cannot or should not match the public argument name.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * public record Arg(String name, Object value) {}
+   *
+   * public static void connect(String host, @Default("5432") int port) {
+   *   // ...
+   * }
+   *
+   * public static void connect(Arg... args) {
+   *   _defaultArgs();
+   * }
+   *
+   * public static Arg _host(String value) {
+   *   return _arg();
+   * }
+   *
+   * @Name("port")
+   * public static Arg portArg(int value) {
+   *   return _arg();
+   * }
+   *
+   * connect(_host("localhost"));
+   * connect(_host("localhost"), portArg(15432));
+   * }</pre>
+   *
+   * @param <T> the configured argument record type.
+   * @return a generated argument record after transformation.
+   * @see #_defaultArgs()
+   * @see ArgClass
+   * @see Name
+   */
   public static <T> T _arg() {
     unpure();
     return unknown();
   }
 
+  /**
+   * Selects the argument record class used by {@link #_arg()} helpers and
+   * {@link #_defaultArgs()} overloads in the annotated class.
+   * <p>
+   * Without this annotation, the plugin expects a public nested record named
+   * {@code Arg} in the same class:
+   * <pre>{@code
+   * public record Arg(String name, Object value) {}
+   * }</pre>
+   * Use {@code @ArgClass} when the record has a different name or is declared
+   * elsewhere. The selected class must provide a constructor compatible with
+   * {@code (String, Object)} and {@code name()} / {@code value()} accessors;
+   * using a record is the intended shape.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * @ArgClass(Args.Named.class)
+   * public class Api {
+   *   public static Args.Named _host(String value) { return _arg(); }
+   * }
+   *
+   * public final class Args {
+   *   public record Named(String name, Object value) {}
+   * }
+   * }</pre>
+   *
+   * @see #_defaultArgs()
+   * @see #_arg()
+   */
   @Retention(RetentionPolicy.CLASS)
   @Target(ElementType.TYPE)
   public @interface ArgClass {
+    /**
+     * The argument record class used by transformed named-argument helpers.
+     *
+     * @return the class that stores an argument name and value.
+     */
     Class<?> value();
   }
 
+  /**
+   * Marks a backing-method parameter as optional for a {@link #_defaultArgs()}
+   * overload and describes how its value is computed when omitted.
+   * <p>
+   * If {@link #value()} is non-empty, the annotation value is parsed as an
+   * in-place constant default. Direct constants are supported only for primitive
+   * types, boxed primitive types, {@link String}, and {@code null} for reference
+   * types. Supported literals include {@code true}/{@code false}, decimal or
+   * {@code 0x}-prefixed integer literals with underscores, float and double
+   * literals including {@code NaN}, {@code Infinity}, and {@code -Infinity},
+   * character literals in the form {@code 'x'}, and plain string contents.
+   * <p>
+   * If {@link #value()} is empty, the plugin looks for a default value provider
+   * named {@code backingName$parameterName}. A provider may be either a field or
+   * a method, and may use {@link Name} to expose that logical provider name when
+   * the Java member name differs. A provider for a static backing method must be
+   * static; a provider for an instance backing method may be static or instance.
+   * The provider type or return type must exactly match the parameter type.
+   * <p>
+   * Method providers may declare dependencies on other parameters. Dependency
+   * parameters are matched by name (or parameter {@link Name}) and exact type,
+   * and must already be filled by the caller or by an earlier default provider.
+   * Missing dependencies fail with {@link IllegalArgumentException}.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * public record Arg(String name, Object value) {}
+   *
+   * public static void open(
+   *   String host,
+   *   @Default("8080") int port,
+   *   @Default("true") boolean secure,
+   *   @Default String url,
+   *   @Default String header
+   * ) {
+   *   // ...
+   * }
+   *
+   * // Field provider for header.
+   * public static String open$header = "Accept: application/json";
+   *
+   * // Method provider for url; depends on host, port, and secure.
+   * public static String open$url(String host, int port, boolean secure) {
+   *   return (secure ? "https://" : "http://") + host + ':' + port;
+   * }
+   * }</pre>
+   *
+   * @see #_defaultArgs()
+   * @see Name
+   */
   @Retention(RetentionPolicy.CLASS)
   @Target(ElementType.PARAMETER)
   public @interface Default {
+    /**
+     * The optional in-place constant default literal. Leave empty to use a field
+     * or method provider named {@code backingName$parameterName}.
+     *
+     * @return the constant literal text, or an empty string to request a member
+     * provider.
+     */
     String value() default "";
   }
 
+  /**
+   * Supplies the logical name used by default-argument and named-argument
+   * transformations when the Java source name is unavailable, ambiguous, or not
+   * the desired public API name.
+   * <p>
+   * Supported locations:
+   * <ul>
+   *   <li>On a {@link #_defaultArgs()} overload: selects the backing method or
+   *       constructor logical name.</li>
+   *   <li>On the backing method or constructor: disambiguates which executable
+   *       should receive calls from the generated overload when multiple Java
+   *       executables share the same name.</li>
+   *   <li>On backing-method parameters: sets public argument names and avoids
+   *       requiring debug local-variable information.</li>
+   *   <li>On {@link #_arg()} helper methods: sets the argument name stored in the
+   *       generated argument record.</li>
+   *   <li>On default-value provider methods, provider method parameters, and
+   *       provider fields: supplies the logical {@code backingName$parameterName}
+   *       or dependency name when the Java member or parameter name differs.</li>
+   * </ul>
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * public record Arg(String name, Object value) {}
+   *
+   * @Name("create")
+   * public User(String login, @Name("display-name") @Default String displayName) {
+   *   // ...
+   * }
+   *
+   * @Name("create$display-name")
+   * private static String defaultDisplayName(@Name("login") String value) {
+   *   return value;
+   * }
+   *
+   * @Name("create")
+   * public User(Arg... args) {
+   *   _defaultArgs();
+   * }
+   *
+   * @Name("display-name")
+   * public static Arg displayName(String value) {
+   *   return _arg();
+   * }
+   * }</pre>
+   */
   @Retention(RetentionPolicy.CLASS)
-  @Target({ElementType.METHOD, ElementType.PARAMETER})
+  @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER})
   public @interface Name {
+    /**
+     * The logical name used by the relevant transformation.
+     *
+     * @return the transformed public or provider name.
+     */
     String value();
   }
 }
