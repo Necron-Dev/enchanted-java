@@ -8,6 +8,8 @@ import org.gradle.api.tasks.compile.JavaCompile;
 public class MyPlugin implements Plugin<Project> {
   @Override
   public void apply(Project project) {
+    var extension = project.getExtensions().create("enchantedJava", EnchantedJavaExtension.class);
+
     project.getPlugins().withId(
       "java", plugin -> {
         var javaExtension = project.getExtensions().getByType(JavaPluginExtension.class);
@@ -29,6 +31,7 @@ public class MyPlugin implements Plugin<Project> {
               enchantTask.getInputDirectory().set(compileTaskProvider.get().getDestinationDirectory());
               enchantTask.getOutputDirectory().set(finalOutputDir);
               enchantTask.getClasspath().from(compileTaskProvider.get().getClasspath());
+              enchantTask.getProperties().putAll(extension.getProperties());
 
               enchantTask.onlyIf(task -> {
                 var dir = enchantTask.getInputDirectory().getOrNull();

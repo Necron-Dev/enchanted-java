@@ -4,6 +4,7 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileType;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.tasks.*;
 import org.gradle.work.ChangeType;
 import org.gradle.work.Incremental;
@@ -31,6 +32,9 @@ public abstract class EnchantTask extends DefaultTask {
 
   @Internal
   public abstract ConfigurableFileCollection getClasspath();
+
+  @Input
+  public abstract MapProperty<String, Object> getProperties();
 
   @TaskAction
   public void execute(InputChanges inputChanges) throws IOException {
@@ -67,7 +71,7 @@ public abstract class EnchantTask extends DefaultTask {
         continue;
       }
       var content = Files.readAllBytes(sourceFile.toPath());
-      Files.write(targetFile.toPath(), Enchanter.enchant(content, classLoader));
+      Files.write(targetFile.toPath(), Enchanter.enchant(content, classLoader, getProperties().get()));
     }
     classLoader.close();
   }

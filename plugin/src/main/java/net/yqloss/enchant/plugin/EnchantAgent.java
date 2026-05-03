@@ -4,6 +4,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 public final class EnchantAgent {
@@ -44,7 +45,8 @@ public final class EnchantAgent {
                 }
                 return super.loadClass(name, resolve);
               }
-            }
+            },
+            Map.of()
           );
         } catch (Throwable throwable) {
           System.err.printf("failed to enchant %s%n", className);

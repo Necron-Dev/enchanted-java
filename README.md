@@ -26,6 +26,13 @@ repositories {
 dependencies {
   compileOnly("net.yqloss:enchanted-java-library:$LIBRARY_VERSION")
 }
+
+enchantedJava {
+  properties.put("apiKey", "sk_test_123")
+  properties.put("endpointUrl", "https://api.example.com")
+  properties.put("retryCount", 3)
+  properties.put("enabled", true)
+}
 ```
 
 ```java
@@ -71,6 +78,7 @@ The latest version numbers can be checked here:
 * Unchecked cast without warning: `_cast(value)`
 * Compile-time random UUID for identifiers: `_id`
 * Compile-time computations: `_const(() -> expr)`
+* Compile-time properties: `_property("name")`
 
 For the bottom type, there are currently two implementations:
 

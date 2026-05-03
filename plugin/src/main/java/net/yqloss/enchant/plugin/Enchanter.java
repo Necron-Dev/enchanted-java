@@ -8,12 +8,11 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class Enchanter {
   public static final Set<String> EnchantedJavaClasses = Set.of(
-    "yqloss/EnchantedJava",
-    "yqloss/Ench",
     "yqloss/E"
   );
 
@@ -25,9 +24,7 @@ public class Enchanter {
     ScopeFunctionPass.Instance,
     NeverPass.Instance,
     ThrowPass.Instance,
-    ReturnPass.Instance,
-    CompileTimePass.Instance,
-    CheckerPass.Instance
+    ReturnPass.Instance
   );
 
   public static final List<Pass> OptimizePasses = List.of(
@@ -65,9 +62,12 @@ public class Enchanter {
     return cw.toByteArray();
   }
 
-  public static byte[] enchant(byte[] original, ClassLoader classLoader) {
+  public static byte[] enchant(byte[] original, ClassLoader classLoader, Map<String, ?> properties) {
     var cn = bytesToClassNode(original);
     EnchantPasses.forEach(pass -> pass.accept(cn, classLoader));
+    new PropertyPass(properties).accept(cn, classLoader);
+    CompileTimePass.Instance.accept(cn, classLoader);
+    CheckerPass.Instance.accept(cn, classLoader);
     while (OptimizePasses.stream().anyMatch(pass -> pass.accept(cn, classLoader)))
       ;
     return classNodeToBytes(cn, classLoader);
