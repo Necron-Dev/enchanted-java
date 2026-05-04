@@ -49,10 +49,11 @@ public enum ElvisPass implements Pass {
 
           if (
             item.insn instanceof MethodInsnNode min
-            && AsmHelper.isCallHook(min, "$elvis", "$([?])->?")
+            && AsmHelper.isCallHook(min, "$elvis", "$([?])->?", "$$")
           ) {
             modified = true;
             modifiedMethod = true;
+            var isSafe = "$$".equals(min.name);
             var label = new LabelNode();
             analyzed.set(i, new AnalyzedInsn(label, item.frame));
 
@@ -109,13 +110,21 @@ public enum ElvisPass implements Pass {
               var first = true;
 
               for (var arg : args) {
+                var list = new InsnList();
+                if (isSafe) {
+                  list.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    "yqloss/E",
+                    "$safe",
+                    "(Ljava/lang/Object;)Ljava/lang/Object;"
+                  ));
+                }
                 if (!first) {
-                  var list = new InsnList();
                   list.add(new InsnNode(Opcodes.DUP));
                   list.add(new JumpInsnNode(Opcodes.IFNONNULL, label));
                   list.add(new InsnNode(Opcodes.POP));
-                  i += insertInstructions(analyzed, arg.end, list);
                 }
+                i += insertInstructions(analyzed, arg.end, list);
                 first = false;
                 i -= removePreviousNInstructions(analyzed, arg.end, 1);
                 i -= removeNextNInstructions(analyzed, arg.start, 2);

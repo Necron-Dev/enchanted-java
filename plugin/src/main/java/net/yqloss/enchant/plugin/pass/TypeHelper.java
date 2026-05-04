@@ -27,6 +27,10 @@ public class TypeHelper {
     }
 
     if (fromSort == Type.VOID) {
+      if (toSort == Type.OBJECT) {
+        append.accept(new InsnNode(Opcodes.ACONST_NULL));
+        return;
+      }
       throw new UnsupportedOperationException("cannot convert void to non-void types");
     }
 

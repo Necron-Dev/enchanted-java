@@ -73,8 +73,9 @@ The latest version numbers can be checked here:
 * Return as expression with finally and synchronized support: `_return()`
   `_return(value)` `_return_()` `_return_(value)` `$return(value)`
 * Elvis operator with short circuit: `$elvis(value1, value2, ...)` or `$`
-* Scope functions: `_void`, `_run`, `_also`, `_with`, `$also`, `$with`
 * Safe member access: `$safe(getUser().getName())` or `$`
+* The two above combined: `$$(a, b, c)`
+* Scope functions: `_void`, `_run`, `_also`, `_with`, `$also`, `$with`
 * Unchecked cast without warning: `_cast(value)`
 * Compile-time random UUID for identifiers: `_id`
 * Compile-time computations: `_const(() -> expr)`

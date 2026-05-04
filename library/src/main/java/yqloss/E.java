@@ -257,12 +257,12 @@ public final class E {
    * support for {@code finally} blocks and {@code synchronized} monitors,
    * ensuring resources are correctly released before the method exits.
    * <p>
-   * <b>Usage Constraint:</b> This variant is strictly intended for methods
-   * with a {@code void} return type.
+   * <b>Usage Constraint:</b> This variant is intended for methods
+   * with a {@code void} or reference ({@code null}) return type.
    * <p>
    * <b>Examples:</b>
    * <pre>{@code
-   * // Using return as an expression to exit a void method early
+   * // Using return as an expression to exit a method early
    * (input == null) ? _return() : process(input);
    * }</pre>
    *
@@ -1130,5 +1130,17 @@ public final class E {
      * @return the transformed public or provider name.
      */
     String value();
+  }
+
+  /**
+   * Alias for {@code $elvis($safe(a), $safe(b), ...)}.
+   *
+   * @see #$elvis
+   * @see #$safe
+   */
+  @SafeVarargs
+  public static <T> T $$(T... values) {
+    unpure();
+    return values[internal0];
   }
 }

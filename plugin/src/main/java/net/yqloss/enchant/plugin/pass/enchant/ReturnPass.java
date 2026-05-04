@@ -105,8 +105,10 @@ public enum ReturnPass implements Pass {
               }
             } else {
               switch (params) {
-                case "" -> // throws because this convert never succeeds
+                case "" -> {
                   TypeHelper.convert(iter::add, Type.VOID_TYPE, returnType);
+                  iter.add(new VarInsnNode(Opcodes.ASTORE, resultObject));
+                }
 
                 case "Ljava/lang/Object;" ->
                   iter.add(new VarInsnNode(Opcodes.ASTORE, resultObject));
