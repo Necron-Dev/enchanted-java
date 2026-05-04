@@ -67,8 +67,8 @@ public class Enchanter {
         ThrowPass.Instance,
         ReturnPass.Instance,
         new PropertyPass(properties),
-        CompileTimePass.Instance,
         TrimAnnotationPass.Instance,
+        CompileTimePass.Instance,
         CheckerPass.Instance
       ).forEach(pass -> pass.accept(cn, classLoader));
       return classNodeToBytes(cn, classLoader);
