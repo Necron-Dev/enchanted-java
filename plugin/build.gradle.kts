@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "net.yqloss"
-version = "0.11.1"
+version = "0.12.0"
 
 repositories {
   mavenCentral()

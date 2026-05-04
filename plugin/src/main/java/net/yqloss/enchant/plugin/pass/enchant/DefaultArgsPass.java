@@ -315,7 +315,7 @@ public enum DefaultArgsPass implements Pass {
         list.add(new InsnNode(Opcodes.DUP));
         TypeHelper.buildString(
           list::add,
-          l -> "argument already filled: ",
+          l -> "parameter already filled: ",
           l -> {
             l.accept(new VarInsnNode(Opcodes.ALOAD, tempIndex));
             return null;
@@ -451,7 +451,7 @@ public enum DefaultArgsPass implements Pass {
         list.add(entryNullLabel);
         list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/IllegalArgumentException"));
         list.add(new InsnNode(Opcodes.DUP));
-        list.add(new LdcInsnNode("arg items cannot be null"));
+        list.add(new LdcInsnNode("argument item cannot be null"));
         list.add(new MethodInsnNode(
           Opcodes.INVOKESPECIAL,
           "java/lang/IllegalArgumentException",
@@ -502,7 +502,7 @@ public enum DefaultArgsPass implements Pass {
           TypeHelper.buildString(
             list::add,
             (l, r) -> {
-              r.accept(param.name + " is missing dependencies:");
+              r.accept("parameter " + param.name + " is missing dependencies:");
               for (var dep : def.dependencies()) {
                 var param2 = nameToParam.get(dep.name);
                 if (param2.index == -1) continue;

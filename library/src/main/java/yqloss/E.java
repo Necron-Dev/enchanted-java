@@ -7,6 +7,7 @@ import java.lang.annotation.Target;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.ObjIntConsumer;
 import java.util.function.Supplier;
 
 /**
@@ -696,7 +697,6 @@ public final class E {
    * @see #$safe(Object)
    */
   public static <T> T $unsafe(T expr) {
-    unpure();
     return expr;
   }
 
@@ -729,7 +729,6 @@ public final class E {
    * @return the object, treated as type {@code T} by the compiler.
    */
   public static <T> T _cast(Object object) {
-    unpure();
     return (T) object;
   }
 
@@ -782,6 +781,7 @@ public final class E {
    * transformation.
    */
   public static <T> T _const(Supplier<? extends T> expr) {
+    unpure();
     return expr.get();
   }
 
@@ -818,6 +818,7 @@ public final class E {
    * @return the property value provided by the plugin at transformation time.
    */
   public static <T> T _property(String name) {
+    unpure();
     return unknown();
   }
 
@@ -1282,7 +1283,7 @@ public final class E {
   public static void _default(double param, double value) {
     unpure();
   }
-  
+
   /**
    * Inline default value overload for {@code char} parameters. If the default
    * expression evaluates to a wider type (e.g. {@code int}), an explicit cast
@@ -1300,6 +1301,101 @@ public final class E {
    * @see #_default(Object, Object)
    */
   public static void _default(boolean param, boolean value) {
+    unpure();
+  }
+
+  /**
+   * Registers a discard-value receiver for the enclosing method. When active,
+   * every expression whose value is discarded within the method is forwarded to
+   * the receiver as an {@code (Object value, int index)} pair, where
+   * {@code index} is the sequential position of the discarded expression in
+   * method body order.
+   * <p>
+   * The Gradle plugin replaces this call with code that stores the receiver
+   * into a local variable, then transforms each {@code POP} or {@code POP2} in
+   * the method body: if the receiver is non-null, the discarded value is
+   * converted to {@link Object} and passed to
+   * {@link ObjIntConsumer#accept(Object, int)} along with its index; if the
+   * receiver is {@code null}, the value is simply discarded as usual.
+   * <p>
+   * Discards performed via {@code $ = value} participate in receiver delivery;
+   * discards performed via {@code __ = value} do <b>not</b> — they are always
+   * silently dropped regardless of whether a receiver is active.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * public void process(ObjIntConsumer<Object> receiver) {
+   *   _receiver(receiver);
+   *   computeSomething();  // discarded value → receiver.accept(result, 0)
+   *   $ = getSideEffect(); // discarded value → receiver.accept(result, 1)
+   *   __ = logDebug();     // silently discarded, not sent to receiver
+   * }
+   * }</pre>
+   *
+   * @param receiver the callback that receives each discarded value and its
+   *                 expression index; may be {@code null}, in which case all
+   *                 discards simply drop the value.
+   * @see #$
+   * @see #__
+   */
+  public static void _receiver(ObjIntConsumer<?> receiver) {
+    unpure();
+  }
+
+  /**
+   * Explicitly discards a value, suppressing the "result of … is ignored"
+   * compiler warning. The Gradle plugin replaces the field assignment
+   * ({@code $ = value}) with a single {@code POP} instruction, removing any
+   * trace of the field write at runtime.
+   * <p>
+   * If a discard receiver is active via {@link #_receiver(ObjIntConsumer)}, the
+   * discarded value is <b>forwarded</b> to that receiver along with its
+   * sequential expression index. Use {@link #__} to discard a value that should
+   * never be observed by a receiver.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * $ = computeSideEffect();    // discard value, suppress warning
+   *                             // → with _receiver: receiver.accept(value, n)
+   * }</pre>
+   *
+   * @see #__
+   * @see #_receiver(ObjIntConsumer)
+   */
+  public static Object $ = null;
+
+  /**
+   * Explicitly discards a value without forwarding it to a discard receiver.
+   * The behavior is identical to {@link #$} except that the discarded value is
+   * <b>never</b> delivered to a {@link #_receiver(ObjIntConsumer)}, even when
+   * one is active. This is useful for intentionally silencing a warning on a
+   * value that should be genuinely ignored rather than inspected.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * __ = logDebug();  // silently discarded, never sent to receiver
+   * }</pre>
+   *
+   * @see #$
+   * @see #_receiver(ObjIntConsumer)
+   */
+  public static Object __ = null;
+
+  /**
+   * Prevents the Gradle plugin from inferring the enclosing method as a pure
+   * function. The plugin removes this call entirely during transformation; its
+   * sole purpose is to mark a method as having side effects or being
+   * non-deterministic when the method body would otherwise appear pure.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * public void log(String message) {
+   *   _unpure();
+   *   System.out.println(message);
+   * }
+   * }</pre>
+   */
+  public static void _unpure() {
     unpure();
   }
 }

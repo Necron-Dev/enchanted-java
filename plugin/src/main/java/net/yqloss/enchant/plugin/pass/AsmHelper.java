@@ -132,12 +132,22 @@ public class AsmHelper {
     return false;
   }
 
-  public static boolean isGetHook(FieldInsnNode min, String... fields) {
+  public static boolean isGetHook(FieldInsnNode fin, String... fields) {
     if (
-      min.getOpcode() == Opcodes.GETSTATIC
-      && Enchanter.EnchantedJavaClasses.contains(min.owner)
+      fin.getOpcode() == Opcodes.GETSTATIC
+      && Enchanter.EnchantedJavaClasses.contains(fin.owner)
     ) {
-      return Arrays.asList(fields).contains(min.name);
+      return Arrays.asList(fields).contains(fin.name);
+    }
+    return false;
+  }
+
+  public static boolean isSetHook(FieldInsnNode fin, String... fields) {
+    if (
+      fin.getOpcode() == Opcodes.PUTSTATIC
+      && Enchanter.EnchantedJavaClasses.contains(fin.owner)
+    ) {
+      return Arrays.asList(fields).contains(fin.name);
     }
     return false;
   }

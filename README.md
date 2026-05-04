@@ -64,8 +64,8 @@ The latest version numbers can be checked here:
 
 ## Implemented Features
 
-* True (`_all`) and false (`_any`) constants for prettier chained logical
-  expressions
+* True (`_all`) and false (`_any`, `_switch`) constants for prettier chained
+  logical expressions
 * Empty body placeholder: `_pass()`
 * Never (unreachable) as expression: `_never()` `_never_()`
 * Throw as expression: `_throw(exception)` `_throw_(exception)`
@@ -81,8 +81,8 @@ The latest version numbers can be checked here:
 * Compile-time computations: `_const(() -> expr)`
 * Compile-time properties: `_property("name")`
 * Default and named arguments: `_defaultArgs()`, `_arg()`,
-  `_default(param, value)`, `@Default`,
-  `@Name`, `@ArgClass`
+  `_default(param, value)`, `@Default`, `@Name`, `@ArgClass`
+* Discarded value receiver: `_receiver(r)`, `$ = sent`, `__ = notSent`
 
 For the bottom type, there are currently two implementations:
 

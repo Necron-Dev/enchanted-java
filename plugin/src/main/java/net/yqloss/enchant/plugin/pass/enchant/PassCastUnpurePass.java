@@ -5,7 +5,7 @@ import net.yqloss.enchant.plugin.pass.Pass;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
-public enum PassCastPass implements Pass {
+public enum PassCastUnpurePass implements Pass {
   Instance;
 
   @Override
@@ -16,7 +16,7 @@ public enum PassCastPass implements Pass {
       while (iter.hasNext()) {
         if (
           iter.next() instanceof MethodInsnNode min
-          && AsmHelper.isCallHook(min, "_pass", "_cast")
+          && AsmHelper.isCallHook(min, "_pass", "_cast", "_unpure")
         ) {
           modified = true;
           iter.remove();
