@@ -25,6 +25,12 @@ public enum DefaultArgsPass implements Pass {
     String name
   ) {}
 
+  private record TypeNameIndex(
+    Type type,
+    String name,
+    int index
+  ) {}
+
   private record ParameterInfo(
     int index,
     BigInteger bit,
@@ -69,19 +75,21 @@ public enum DefaultArgsPass implements Pass {
       var th = new ThrowHelper("default-args", cn, mn);
       if (AsmHelper.containsStub(mn.instructions, "_defaultArgs")) {
         modified = true;
+
         var desc = Type.getMethodType(mn.desc);
         if (!(
-          desc.getArgumentCount() == 1
-          && (Object) desc.getArgumentTypes()[0] instanceof Type t
+          desc.getArgumentCount() > 0
+          && (Object) desc.getArgumentTypes()[desc.getArgumentCount() - 1] instanceof Type t
           && t.getSort() == Type.ARRAY
           && t.getElementType().getSort() == Type.OBJECT
           && argClass.equals(t.getElementType().getInternalName())
         )) {
           throw th.raise(
-            "_defaultArgs methods must take exactly one argument with type %s[]",
+            "_defaultArgs methods must take the last argument with type %s[]",
             argClass
           );
         }
+
         var backing = AsmHelper.fromAnnotation(
           mn.invisibleAnnotations,
           "Lyqloss/E$Name;",
@@ -134,20 +142,34 @@ public enum DefaultArgsPass implements Pass {
           throw th.raise("methods must be both static or both non-static and return the same type");
         }
         var isStatic = (mn.access & Opcodes.ACC_STATIC) != 0;
-        var argsIndex = isStatic ? 0 : 1;
+        var positionalArgsIndex = isStatic ? 0 : 1;
+        var argsIndex = positionalArgsIndex;
+        var positionalArgs = new HashMap<String, TypeNameIndex>();
+        for (var i = 0; i < desc.getArgumentCount() - 1; i++) {
+          var type = desc.getArgumentTypes()[i];
+          int finalI = i;
+          var name = AsmHelper.fromAnnotation(
+            AsmHelper.safeGet(mn.invisibleParameterAnnotations, i),
+            "Lyqloss/E$Name;",
+            () -> getParamName(th, mn, finalI)
+          );
+          positionalArgs.put(name, new TypeNameIndex(type, name, argsIndex));
+          argsIndex += type.getSize();
+        }
         var tempIndex = argsIndex + 1;
-        mn.maxLocals = isStatic ? 2 : 3;
+        mn.maxLocals = tempIndex + 1;
         mn.tryCatchBlocks.clear();
         var list = mn.instructions;
         list.clear();
         TypeHelper.init(list::add, objectType, tempIndex);
         var helperIntIndex = mn.maxLocals;
-        var helperCount = (backingDesc.getArgumentCount() + 31) >> 5;
+        var helperCount = (backingDesc.getArgumentCount() - positionalArgs.size() + 31) >> 5;
         mn.maxLocals += helperCount;
         for (var i = helperIntIndex; i < mn.maxLocals; i++) {
           TypeHelper.init(list::add, Type.INT_TYPE, i);
         }
         var params = new ArrayList<ParameterInfo>();
+        var allParams = new ArrayList<ParameterInfo>();
         var nameToParam = new HashMap<String, ParameterInfo>();
 
         for (var i = 0; i < backingDesc.getArgumentCount(); i++) {
@@ -158,24 +180,53 @@ public enum DefaultArgsPass implements Pass {
             () -> getParamName(th, backingMethod, finalI)
           );
           var type = backingDesc.getArgumentTypes()[i];
-          var param = new ParameterInfo(
-            i,
-            BigInteger.ONE.shiftLeft(i),
-            mn.maxLocals,
-            name,
-            type,
-            AsmHelper.fromAnnotation(
-              AsmHelper.safeGet(backingMethod.invisibleParameterAnnotations, i),
-              "Lyqloss/E$Default;",
-              (String value) -> getDefaultValue(th, cn, type, backing, name, value, isStatic),
-              () -> null
-            ),
-            new LabelNode()
-          );
-          params.add(param);
+          var positional = positionalArgs.get(name);
+          if (positional != null && !type.equals(positional.type)) {
+            throw th.raise(
+              "type of positional argument %s does not match parameter type",
+              name
+            );
+          }
+          positionalArgs.remove(name);
+          ParameterInfo param;
+          if (positional != null) {
+            param = new ParameterInfo(
+              -1,
+              BigInteger.ZERO,
+              positional.index,
+              name,
+              type,
+              null,
+              null
+            );
+          } else {
+            param = new ParameterInfo(
+              params.size(),
+              BigInteger.ONE.shiftLeft(params.size()),
+              mn.maxLocals,
+              name,
+              type,
+              AsmHelper.fromAnnotation(
+                AsmHelper.safeGet(backingMethod.invisibleParameterAnnotations, i),
+                "Lyqloss/E$Default;",
+                (String value) -> getDefaultValue(th, cn, type, backing, name, value, isStatic),
+                () -> null
+              ),
+              new LabelNode()
+            );
+            params.add(param);
+            TypeHelper.init(list::add, type, mn.maxLocals);
+            mn.maxLocals += type.getSize();
+          }
+          allParams.add(param);
           nameToParam.put(name, param);
-          TypeHelper.init(list::add, type, mn.maxLocals);
-          mn.maxLocals += type.getSize();
+        }
+
+        if (!positionalArgs.isEmpty()) {
+          throw th.raise(
+            "positional parameters %s not found",
+            String.join(", ", positionalArgs.keySet())
+          );
         }
 
         for (var param : params) {
@@ -461,6 +512,7 @@ public enum DefaultArgsPass implements Pass {
               r.accept(param.name + " is missing dependencies:");
               for (var dep : def.dependencies()) {
                 var param2 = nameToParam.get(dep.name);
+                if (param2.index == -1) continue;
                 var skip2 = new LabelNode();
                 list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + param2.getHelper()));
                 // [helper]
@@ -558,7 +610,7 @@ public enum DefaultArgsPass implements Pass {
         if (!isStatic) {
           list.add(new VarInsnNode(Opcodes.ALOAD, 0));
         }
-        for (var param : params) {
+        for (var param : allParams) {
           list.add(new VarInsnNode(param.type.getOpcode(Opcodes.ILOAD), param.stack));
         }
         list.add(new MethodInsnNode(
