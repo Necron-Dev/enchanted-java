@@ -559,13 +559,15 @@ public enum DefaultArgsPass implements Pass {
             var bitsToCompare = bits.intValue();
             bits = bits.shiftRight(32);
             if (bitsToCompare == 0) continue;
-            list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + i));
-            // [helper]
             list.add(new LdcInsnNode(bitsToCompare));
-            // [helper, bits]
+            // [bits]
+            list.add(new InsnNode(Opcodes.DUP));
+            // [bits, bits]
+            list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + i));
+            // [bits, bits, helper]
             list.add(new InsnNode(Opcodes.IAND));
-            // [theBits]
-            list.add(new JumpInsnNode(Opcodes.IFEQ, param.missingDependenciesError));
+            // [bits, theBits]
+            list.add(new JumpInsnNode(Opcodes.IF_ICMPNE, param.missingDependenciesError));
             // []
           }
 
