@@ -113,12 +113,12 @@ public class AsmHelper {
         if (method.contains("(")) {
           method = method
                      .replace("?", "Ljava/lang/Object;")
+                     .replace("->", "")
                      .replace("<", "L")
                      .replace(">", ";")
                      .replace("]", "")
                      .replace(" ", "")
-                     .replace(",", "")
-                     .replace("->", "");
+                     .replace(",", "");
           if (Objects.equals(min.name + min.desc, method)) {
             return true;
           }
