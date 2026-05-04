@@ -826,17 +826,27 @@ public final class E {
    * method or constructor in the same class.
    * <p>
    * The Gradle plugin replaces the body of a method containing this token with
-   * bytecode that reads an array of argument records, fills the backing method's
-   * parameters by name, computes missing parameters annotated with
+   * bytecode that reads an array of argument records, fills the backing
+   * method's parameters by name, computes missing parameters annotated with
    * {@link Default}, and delegates to the backing method. Duplicate argument
    * names, unknown names, {@code null} argument records, and missing required
    * arguments fail with {@link IllegalArgumentException}.
    * <p>
-   * The generated overload must take exactly one varargs parameter whose element
-   * type is the argument record class. By default that record is an inner class
-   * named {@code Arg}; otherwise annotate the enclosing class with
-   * {@link ArgClass}. The record must be public and expose the canonical
-   * constructor and accessors for {@code name} and {@code value}:
+   * The generated overload must take its <b>last</b> parameter as a varargs
+   * whose element type is the argument record class. Any parameters before the
+   * varargs are <b>positional</b>: they are matched by name to backing-method
+   * parameters and passed directly, without needing an argument record. A
+   * positional parameter's name is read from debug local-variable information,
+   * or from {@link Name} on the overload's parameter when debug information is
+   * unavailable or a different name is desired. The type of each positional
+   * parameter must exactly match the corresponding backing-method parameter's
+   * type. Positional parameters that do not match any backing-method parameter
+   * name cause a transformation error.
+   * <p>
+   * By default the record class is an inner class named {@code Arg}; otherwise
+   * annotate the enclosing class with {@link ArgClass}. The record must be
+   * public and expose the canonical constructor and accessors for {@code name}
+   * and {@code value}:
    * <pre>{@code
    * public class Example {
    *   public record Arg(String name, Object value) {}
@@ -844,11 +854,12 @@ public final class E {
    * }</pre>
    * <p>
    * The backing method is found by name. For a varargs method named
-   * {@code f(Arg... args)}, the backing method is normally {@code f(...)}. If the
-   * generated overload or backing method uses a different Java name, annotate it
-   * with {@link Name @Name("logicalName")}. Parameter names are read from debug
-   * local-variable information, or from {@link Name} on each parameter when debug
-   * information is unavailable or a different public argument name is desired.
+   * {@code f(Arg... args)}, the backing method is normally {@code f(...)}. If
+   * the generated overload or backing method uses a different Java name,
+   * annotate it with {@link Name @Name("logicalName")}. Parameter names are
+   * read from debug local-variable information, or from {@link Name} on each
+   * parameter when debug information is unavailable or a different public
+   * argument name is desired.
    * <p>
    * <b>Examples:</b>
    * <pre>{@code
@@ -866,7 +877,13 @@ public final class E {
    *     return (short) a;
    *   }
    *
+   *   // All named arguments via varargs:
    *   public static void f(Arg... args) {
+   *     _defaultArgs();
+   *   }
+   *
+   *   // Mixed: 'a' is passed positionally, 'b' via named argument:
+   *   public static void f(float a, Arg... args) {
    *     _defaultArgs();
    *   }
    *
@@ -881,6 +898,7 @@ public final class E {
    *   public static void main(String... args) {
    *     f(_a(1));              // b defaults to (short) a
    *     f(_a(1), _b((short) 2));
+   *     f(1.0f, _b((short) 2)); // a passed positionally, b via name
    *   }
    * }
    * }</pre>
@@ -994,19 +1012,21 @@ public final class E {
    * overload and describes how its value is computed when omitted.
    * <p>
    * If {@link #value()} is non-empty, the annotation value is parsed as an
-   * in-place constant default. Direct constants are supported only for primitive
-   * types, boxed primitive types, {@link String}, and {@code null} for reference
-   * types. Supported literals include {@code true}/{@code false}, decimal or
-   * {@code 0x}-prefixed integer literals with underscores, float and double
-   * literals including {@code NaN}, {@code Infinity}, and {@code -Infinity},
-   * character literals in the form {@code 'x'}, and plain string contents.
+   * in-place constant default. Direct constants are supported only for
+   * primitive types, boxed primitive types, {@link String}, and {@code null}
+   * for reference types. Supported literals include {@code true}/{@code false},
+   * decimal or {@code 0x}-prefixed integer literals with underscores, float and
+   * double literals including {@code NaN}, {@code Infinity}, and
+   * {@code -Infinity}, character literals in the form {@code 'x'}, and plain
+   * string contents.
    * <p>
    * If {@link #value()} is empty, the plugin looks for a default value provider
-   * named {@code backingName$parameterName}. A provider may be either a field or
-   * a method, and may use {@link Name} to expose that logical provider name when
-   * the Java member name differs. A provider for a static backing method must be
-   * static; a provider for an instance backing method may be static or instance.
-   * The provider type or return type must exactly match the parameter type.
+   * named {@code backingName$parameterName}. A provider may be either a field
+   * or a method, and may use {@link Name} to expose that logical provider name
+   * when the Java member name differs. A provider for a static backing method
+   * must be static; a provider for an instance backing method may be static or
+   * instance. The provider type or return type must exactly match the parameter
+   * type.
    * <p>
    * Method providers may declare dependencies on other parameters. Dependency
    * parameters are matched by name (or parameter {@link Name}) and exact type,
@@ -1043,8 +1063,8 @@ public final class E {
   @Target(ElementType.PARAMETER)
   public @interface Default {
     /**
-     * The optional in-place constant default literal. Leave empty to use a field
-     * or method provider named {@code backingName$parameterName}.
+     * The optional in-place constant default literal. Leave empty to use a
+     * field or method provider named {@code backingName$parameterName}.
      *
      * @return the constant literal text, or an empty string to request a member
      * provider.
@@ -1061,6 +1081,9 @@ public final class E {
    * <ul>
    *   <li>On a {@link #_defaultArgs()} overload: selects the backing method or
    *       constructor logical name.</li>
+   *   <li>On a {@link #_defaultArgs()} overload's positional parameters: sets the
+   *       public argument name used to match positional parameters to backing-method
+   *       parameters by name.</li>
    *   <li>On the backing method or constructor: disambiguates which executable
    *       should receive calls from the generated overload when multiple Java
    *       executables share the same name.</li>
@@ -1088,7 +1111,7 @@ public final class E {
    * }
    *
    * @Name("create")
-   * public User(Arg... args) {
+   * public User(@Name("login") String login, Arg... args) {
    *   _defaultArgs();
    * }
    *
