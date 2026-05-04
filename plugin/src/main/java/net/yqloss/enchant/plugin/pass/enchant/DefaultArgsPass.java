@@ -71,7 +71,7 @@ public enum DefaultArgsPass implements Pass {
 
     for (var mn : cn.methods) {
       var th = new ThrowHelper("default-args", cn, mn);
-      if (AsmHelper.containsStub(mn.instructions, "_defaultArgs")) {
+      if (AsmHelper.containsStub(mn.instructions, "_defaultArgs", "_defaultArgs_")) {
         modified = true;
 
         var desc = Type.getMethodType(mn.desc);

@@ -937,6 +937,16 @@ public final class E {
   }
 
   /**
+   * Alias for {@link #_defaultArgs} but returns {@link RuntimeException}.
+   *
+   * @see #_arg
+   */
+  public static RuntimeException _defaultArgs_() {
+    unpure();
+    return new UnenchantedException();
+  }
+
+  /**
    * Marks a single-parameter static helper as a named-argument constructor for
    * use with a {@link #_defaultArgs()} overload.
    * <p>
@@ -986,6 +996,16 @@ public final class E {
   public static <T> T _arg() {
     unpure();
     return unknown();
+  }
+
+  /**
+   * Alias for {@link #_arg} but returns {@link RuntimeException}.
+   *
+   * @see #_arg
+   */
+  public static RuntimeException _arg_() {
+    unpure();
+    return new UnenchantedException();
   }
 
   /**

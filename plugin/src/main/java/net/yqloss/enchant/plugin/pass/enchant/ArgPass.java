@@ -23,7 +23,7 @@ public enum ArgPass implements Pass {
 
     for (var mn : cn.methods) {
       var th = new ThrowHelper("arg", cn, mn);
-      if (AsmHelper.containsStub(mn.instructions, "_arg")) {
+      if (AsmHelper.containsStub(mn.instructions, "_arg", "_arg_")) {
         modified = true;
         var desc = Type.getMethodType(mn.desc);
         if (
