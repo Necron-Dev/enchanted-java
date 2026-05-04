@@ -1,9 +1,6 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
-import net.yqloss.enchant.plugin.pass.AsmHelper;
-import net.yqloss.enchant.plugin.pass.Pass;
-import net.yqloss.enchant.plugin.pass.ThrowHelper;
-import net.yqloss.enchant.plugin.pass.TypeHelper;
+import net.yqloss.enchant.plugin.pass.*;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
@@ -15,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public enum DefaultArgsPass implements Pass {
@@ -134,6 +132,7 @@ public enum DefaultArgsPass implements Pass {
           }
         }
         var backingMethod = backingMethodMut;
+        var inlineDefaults = parseInlineDefaults(th, cn, backingMethod);
         var backingDesc = Type.getMethodType(backingMethod.desc);
         if (
           (mn.access & Opcodes.ACC_STATIC) != (backingMethod.access & Opcodes.ACC_STATIC)
@@ -147,12 +146,7 @@ public enum DefaultArgsPass implements Pass {
         var positionalArgs = new HashMap<String, TypeNameIndex>();
         for (var i = 0; i < desc.getArgumentCount() - 1; i++) {
           var type = desc.getArgumentTypes()[i];
-          int finalI = i;
-          var name = AsmHelper.fromAnnotation(
-            AsmHelper.safeGet(mn.invisibleParameterAnnotations, i),
-            "Lyqloss/E$Name;",
-            () -> getParamName(th, mn, finalI)
-          );
+          var name = getParamName(th, mn, i);
           positionalArgs.put(name, new TypeNameIndex(type, name, argsIndex));
           argsIndex += type.getSize();
         }
@@ -174,11 +168,7 @@ public enum DefaultArgsPass implements Pass {
 
         for (var i = 0; i < backingDesc.getArgumentCount(); i++) {
           var finalI = i;
-          var name = AsmHelper.fromAnnotation(
-            AsmHelper.safeGet(backingMethod.invisibleParameterAnnotations, i),
-            "Lyqloss/E$Name;",
-            () -> getParamName(th, backingMethod, finalI)
-          );
+          var name = getParamName(th, backingMethod, finalI);
           var type = backingDesc.getArgumentTypes()[i];
           var positional = positionalArgs.get(name);
           if (positional != null && !type.equals(positional.type)) {
@@ -209,7 +199,10 @@ public enum DefaultArgsPass implements Pass {
               AsmHelper.fromAnnotation(
                 AsmHelper.safeGet(backingMethod.invisibleParameterAnnotations, i),
                 "Lyqloss/E$Default;",
-                (String value) -> getDefaultValue(th, cn, type, backing, name, value, isStatic),
+                (String value) -> getDefaultValue(
+                  th, cn, type, backing, name, value, isStatic,
+                  inlineDefaults.apply(name)
+                ),
                 () -> null
               ),
               new LabelNode()
@@ -502,7 +495,7 @@ public enum DefaultArgsPass implements Pass {
 
         for (var param : params) {
           var def = param.defaultValue;
-          if (def == null) continue;
+          if (def == null || def.dependencies().isEmpty()) continue;
           list.add(param.missingDependenciesError);
           list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/IllegalArgumentException"));
           list.add(new InsnNode(Opcodes.DUP));
@@ -633,9 +626,14 @@ public enum DefaultArgsPass implements Pass {
     String backing,
     String name,
     String annotation,
-    boolean isStatic
+    boolean isStatic,
+    DefaultValue inlineDefault
   ) {
     if (annotation != null && !annotation.isEmpty()) {
+      if (inlineDefault != null) {
+        throw th.raise("annotation default value cannot coexist with inline default value");
+      }
+
       if ("null".equals(annotation)) {
         if (type.getSort() == Type.OBJECT || type.getSort() == Type.ARRAY) {
           return (a, m) -> a.accept(new InsnNode(Opcodes.ACONST_NULL));
@@ -728,13 +726,20 @@ public enum DefaultArgsPass implements Pass {
                 );
         }
 
-        case "Ljava/lang/String;" ->
-          (a, m) -> a.accept(new LdcInsnNode(annotation));
+        case "Ljava/lang/String;" -> (a, m) -> a.accept(new LdcInsnNode(
+          annotation.matches("'.*'")
+          ? annotation.substring(1, annotation.length() - 1)
+          : annotation
+        ));
 
         default -> {
           throw th.raise("only primitive type, boxed primitive type, String, and null default values can be set directly in @Default");
         }
       };
+    }
+
+    if (inlineDefault != null) {
+      return inlineDefault;
     }
 
     var memberName = backing + "$" + name;
@@ -757,11 +762,7 @@ public enum DefaultArgsPass implements Pass {
           IntStream.range(0, desc.getArgumentCount())
             .mapToObj(i -> new TypeAndName(
               desc.getArgumentTypes()[i],
-              AsmHelper.fromAnnotation(
-                AsmHelper.safeGet(mn.invisibleParameterAnnotations, i),
-                "Lyqloss/E$Name;",
-                () -> getParamName(th, mn, i)
-              )
+              getParamName(th, mn, i)
             ))
             .toList();
         return new DefaultValue() {
@@ -864,20 +865,26 @@ public enum DefaultArgsPass implements Pass {
   }
 
   private String getParamName(ThrowHelper th, MethodNode mn, int index) {
-    if (mn.localVariables == null) {
-      throw th.raise("local variable info is not present, try adding -g javac argument or use @Name for every parameter");
-    }
-    var desc = Type.getMethodType(mn.desc);
-    var slot = (mn.access & Opcodes.ACC_STATIC) != 0 ? 0 : 1;
-    for (int i = 0; i < index; i++) {
-      slot += desc.getArgumentTypes()[i].getSize();
-    }
-    for (var variable : mn.localVariables) {
-      if (variable.index == slot) {
-        return variable.name;
+    return AsmHelper.fromAnnotation(
+      AsmHelper.safeGet(mn.invisibleParameterAnnotations, index),
+      "Lyqloss/E$Name;",
+      () -> {
+        if (mn.localVariables == null) {
+          throw th.raise("local variable info is not present, try adding -g javac argument or use @Name for every parameter");
+        }
+        var desc = Type.getMethodType(mn.desc);
+        var slot = (mn.access & Opcodes.ACC_STATIC) != 0 ? 0 : 1;
+        for (int i = 0; i < index; i++) {
+          slot += desc.getArgumentTypes()[i].getSize();
+        }
+        for (var variable : mn.localVariables) {
+          if (variable.index == slot) {
+            return variable.name;
+          }
+        }
+        throw th.raise("parameter name at index %d not found", index);
       }
-    }
-    throw th.raise("parameter name at index %d not found", index);
+    );
   }
 
   private int invokeMethodOpcode(MethodNode mn) {
@@ -891,5 +898,132 @@ public enum DefaultArgsPass implements Pass {
       return Opcodes.INVOKESPECIAL;
     }
     return Opcodes.INVOKEVIRTUAL;
+  }
+
+  private record InlineDefault(
+    TypeAndName info,
+    List<AbstractInsnNode> insn
+  ) {}
+
+  private Function<String, DefaultValue> parseInlineDefaults(ThrowHelper th, ClassNode cn, MethodNode backing) {
+    var map = new HashMap<String, InlineDefault>();
+    var desc = Type.getMethodType(backing.desc);
+    var isStatic = (backing.access & Opcodes.ACC_STATIC) != 0;
+    var currentSlot = isStatic ? 0 : 1;
+    var currentVar = 0;
+    var slotToVar = new HashMap<Integer, TypeAndName>();
+    for (var param : desc.getArgumentTypes()) {
+      slotToVar.put(
+        currentSlot,
+        new TypeAndName(param, getParamName(th, backing, currentVar))
+      );
+      currentVar++;
+      currentSlot += param.getSize();
+    }
+    Analyzed.analyzed(
+      th, cn, backing,
+      analyzed -> {
+        for (var i = analyzed.size() - 1; i >= 0; i--) {
+          var item = analyzed.get(i);
+          if (
+            item.insn() instanceof MethodInsnNode min
+            && AsmHelper.isCallHook(min, "_default")
+          ) {
+            var depth = AsmHelper.getStackSize(analyzed.get(i + 1).frame());
+            if (depth == -1) continue;
+            var j = i;
+            int slot;
+            for (; ; j--) {
+              var jtem = analyzed.get(j);
+              var jDepth = AsmHelper.getStackSize(jtem.frame());
+              if (jDepth == depth) {
+                if (!(jtem.insn() instanceof VarInsnNode vin)) {
+                  throw th.raise("the first argument for _default must be a single parameter without boxing");
+                }
+                slot = vin.var;
+                break;
+              }
+              if (jDepth < depth || j == 0) {
+                throw th.raise("failed to locate arguments for _default");
+              }
+            }
+            if (!slotToVar.containsKey(slot)) {
+              throw th.raise("slot %d does not correspond to a parameter", slot);
+            }
+            var info = slotToVar.get(slot);
+            if (map.containsKey(info.name)) {
+              throw th.raise("multiple inline default values for ", info.name);
+            }
+            map.put(
+              info.name,
+              new InlineDefault(
+                info,
+                analyzed
+                  .subList(j + 1, i)
+                  .stream()
+                  .map(Analyzed.InsnFrame::insn)
+                  .toList()
+              )
+            );
+            i = j;
+          }
+        }
+        return false;
+      }
+    );
+    return paramName -> {
+      var param = map.get(paramName);
+      if (param == null) return null;
+      var dependencies =
+        param.insn
+          .stream()
+          .filter(x -> x instanceof VarInsnNode)
+          .map(x -> ((VarInsnNode) x).var)
+          .filter(x -> isStatic || x != 0)
+          .collect(Collectors.toSet())
+          .stream()
+          .map(x -> {
+            var info = slotToVar.get(x);
+            if (info == null) {
+              throw th.raise("parameters can only depend on parameters");
+            }
+            return info;
+          })
+          .toList();
+
+      return new DefaultValue() {
+        @Override
+        public List<TypeAndName> dependencies() {
+          return dependencies;
+        }
+
+        @Override
+        public void compute(Consumer<AbstractInsnNode> accept, Map<String, ParameterInfo> map) {
+          var labelMap = new HashMap<LabelNode, LabelNode>();
+          for (var insn : param.insn) {
+            if (insn instanceof LabelNode ln) {
+              labelMap.put(ln, new LabelNode());
+            }
+          }
+          for (var insn : param.insn) {
+            if (insn instanceof LineNumberNode || insn instanceof FrameNode) {
+              continue;
+            }
+            if (insn instanceof VarInsnNode vin) {
+              if (!isStatic && vin.var == 0) {
+                accept.accept(insn.clone(labelMap));
+              } else {
+                accept.accept(new VarInsnNode(
+                  vin.getOpcode(),
+                  map.get(slotToVar.get(vin.var).name).stack
+                ));
+              }
+            } else {
+              accept.accept(insn.clone(labelMap));
+            }
+          }
+        }
+      };
+    };
   }
 }

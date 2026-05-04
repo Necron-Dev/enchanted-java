@@ -832,6 +832,20 @@ public final class E {
    * names, unknown names, {@code null} argument records, and missing required
    * arguments fail with {@link IllegalArgumentException}.
    * <p>
+   * Default values for optional parameters can be provided in three ways:
+   * <ol>
+   *   <li>A {@code @Default("value")} constant on the parameter (simple
+   *       literals only).</li>
+   *   <li>An inline default via {@link #_default} in the
+   *       backing method body. The parameter must carry {@code @Default}
+   *       (without a value).</li>
+   *   <li>A separate member provider (field or method) named
+   *       {@code backingName$parameterName}. The parameter must carry
+   *       {@code @Default} (without a value).</li>
+   * </ol>
+   * A {@code @Default("value")} constant and an inline default for the same
+   * parameter cannot coexist.
+   * <p>
    * The generated overload must take its <b>last</b> parameter as a varargs
    * whose element type is the argument record class. Any parameters before the
    * varargs are <b>positional</b>: they are matched by name to backing-method
@@ -877,6 +891,11 @@ public final class E {
    *     return (short) a;
    *   }
    *
+   *   // Equivalent inline form using _default:
+   *   // public static void f(float a, @Default short b) {
+   *   //   _default(b, (short) a);
+   *   // }
+   *
    *   // All named arguments via varargs:
    *   public static void f(Arg... args) {
    *     _defaultArgs();
@@ -906,6 +925,7 @@ public final class E {
    * @param <T> the return type of the backing method.
    * @return the value returned by the backing method after transformation.
    * @see #_arg()
+   * @see #_default
    * @see Default
    * @see ArgClass
    * @see Name
@@ -1017,16 +1037,24 @@ public final class E {
    * for reference types. Supported literals include {@code true}/{@code false},
    * decimal or {@code 0x}-prefixed integer literals with underscores, float and
    * double literals including {@code NaN}, {@code Infinity}, and
-   * {@code -Infinity}, character literals in the form {@code 'x'}, and plain
-   * string contents.
+   * {@code -Infinity}. Character literals in the form {@code 'x'} are supported
+   * for {@code char} and {@link Character}; alternatively, a numeric Unicode
+   * code point can be used. String literals in the form {@code 'text'}
+   * (single-quoted) have the quotes stripped; otherwise the annotation value is
+   * used as-is.
    * <p>
-   * If {@link #value()} is empty, the plugin looks for a default value provider
-   * named {@code backingName$parameterName}. A provider may be either a field
-   * or a method, and may use {@link Name} to expose that logical provider name
-   * when the Java member name differs. A provider for a static backing method
-   * must be static; a provider for an instance backing method may be static or
-   * instance. The provider type or return type must exactly match the parameter
-   * type.
+   * If {@link #value()} is empty, the plugin first checks for an inline default
+   * expression via {@link #_default} in the backing method. If no inline
+   * default is found, the plugin looks for a default value provider named
+   * {@code backingName$parameterName}. A {@code @Default("value")} constant and
+   * an inline default for the same parameter cannot coexist; the parameter must
+   * still carry {@code @Default} (without a value) to mark it as optional.
+   * <p>
+   * A default value provider may be either a field or a method, and may use
+   * {@link Name} to expose that logical provider name when the Java member name
+   * differs. A provider for a static backing method must be static; a provider
+   * for an instance backing method may be static or instance. The provider type
+   * or return type must exactly match the parameter type.
    * <p>
    * Method providers may declare dependencies on other parameters. Dependency
    * parameters are matched by name (or parameter {@link Name}) and exact type,
@@ -1057,6 +1085,7 @@ public final class E {
    * }</pre>
    *
    * @see #_defaultArgs()
+   * @see #_default
    * @see Name
    */
   @Retention(RetentionPolicy.CLASS)
@@ -1142,5 +1171,135 @@ public final class E {
   public static <T> T $$(T... values) {
     unpure();
     return values[internal0];
+  }
+
+  /**
+   * Specifies an inline default value for a backing-method parameter within a
+   * {@link #_defaultArgs()} overload. The Gradle plugin extracts the
+   * {@code value} expression and uses it as the default computation for the
+   * parameter identified by {@code param}.
+   * <p>
+   * The first argument must be a <b>direct parameter load</b> (no boxing,
+   * arithmetic, or method calls). The plugin uses the loaded local-variable
+   * slot to match the argument to the corresponding backing-method parameter by
+   * name. The second argument may reference other parameters by name; those
+   * references become dependencies that must be filled before the default is
+   * computed.
+   * <p>
+   * This token is removed from the backing method's bytecode by
+   * {@code TrimDefaultPass}. A {@code @Default("value")} constant default and
+   * an inline default for the same parameter cannot coexist; however, the
+   * {@code param} must still carry a {@link Default @Default} annotation
+   * (without a value) to mark it as optional.
+   * <p>
+   * <b>Primitive note:</b> when the parameter is a primitive type but the
+   * default expression evaluates to a wider or boxed type, an explicit cast is
+   * required. Use the primitive overload (e.g., {@code _default(short, short)})
+   * matching the backing-method parameter type and cast the expression
+   * accordingly:
+   * <pre>{@code
+   * public static short f$b(float a) {
+   *   return (short) a;  // cast required: float → short
+   * }
+   *
+   * // Equivalent inline form:
+   * public static void f(float a, @Default short b) {
+   *   _default(a, (short) (a + 1));
+   *   //          ^^^^^^^^^^^^^^^^ cast needed: int → short
+   * }
+   * }</pre>
+   * <p>
+   * The expression must not be involved in outer control flow (jumps to labels
+   * outside the expression). Local control flow within the expression (ternary
+   * operators compiled to conditional jumps) is allowed as long as all target
+   * labels are within the expression itself.
+   *
+   * @param param identifies the backing-method parameter this default is for.
+   * @param value the expression computing the default value.
+   * @see #_defaultArgs()
+   * @see Default
+   */
+  public static <T> void _default(T param, T value) {
+    unpure();
+  }
+
+  /**
+   * Inline default value overload for {@code byte} parameters. Use this
+   * overload when the backing-method parameter is {@code byte} to avoid boxing.
+   * If the default expression evaluates to a wider type (e.g. {@code int}), an
+   * explicit cast to {@code byte} is required.
+   *
+   * @see #_default(Object, Object)
+   */
+  public static void _default(byte param, byte value) {
+    unpure();
+  }
+
+  /**
+   * Inline default value overload for {@code short} parameters. Use this
+   * overload when the backing-method parameter is {@code short} to avoid
+   * boxing. If the default expression evaluates to a wider type (e.g.
+   * {@code int}), an explicit cast to {@code short} is required.
+   *
+   * @see #_default(Object, Object)
+   */
+  public static void _default(short param, short value) {
+    unpure();
+  }
+
+  /**
+   * Inline default value overload for {@code int} parameters.
+   *
+   * @see #_default(Object, Object)
+   */
+  public static void _default(int param, int value) {
+    unpure();
+  }
+
+  /**
+   * Inline default value overload for {@code long} parameters.
+   *
+   * @see #_default(Object, Object)
+   */
+  public static void _default(long param, long value) {
+    unpure();
+  }
+
+  /**
+   * Inline default value overload for {@code float} parameters.
+   *
+   * @see #_default(Object, Object)
+   */
+  public static void _default(float param, float value) {
+    unpure();
+  }
+
+  /**
+   * Inline default value overload for {@code double} parameters.
+   *
+   * @see #_default(Object, Object)
+   */
+  public static void _default(double param, double value) {
+    unpure();
+  }
+  
+  /**
+   * Inline default value overload for {@code char} parameters. If the default
+   * expression evaluates to a wider type (e.g. {@code int}), an explicit cast
+   * to {@code char} is required.
+   *
+   * @see #_default(Object, Object)
+   */
+  public static void _default(char param, char value) {
+    unpure();
+  }
+
+  /**
+   * Inline default value overload for {@code boolean} parameters.
+   *
+   * @see #_default(Object, Object)
+   */
+  public static void _default(boolean param, boolean value) {
+    unpure();
   }
 }

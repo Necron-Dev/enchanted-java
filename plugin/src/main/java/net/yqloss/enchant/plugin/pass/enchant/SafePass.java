@@ -1,148 +1,116 @@
 package net.yqloss.enchant.plugin.pass.enchant;
 
+import net.yqloss.enchant.plugin.pass.Analyzed;
 import net.yqloss.enchant.plugin.pass.AsmHelper;
 import net.yqloss.enchant.plugin.pass.Pass;
 import net.yqloss.enchant.plugin.pass.ThrowHelper;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
-import org.objectweb.asm.tree.analysis.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public enum SafePass implements Pass {
   Instance;
 
-  private record AnalyzedInsn(
-    AbstractInsnNode insn,
-    Frame<BasicValue> frame
-  ) {
-  }
-
   @Override
   public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
-    var analyzer = new Analyzer<>(new BasicInterpreter());
 
     for (var mn : cn.methods) {
       var th = new ThrowHelper("safe", cn, mn);
 
-      try {
-        var modifiedMethod = false;
-        mn.maxStack = 65535;
-        var frames = analyzer.analyze(cn.name, mn);
-        var frameIterator = Arrays.stream(frames).iterator();
-        var analyzed = new ArrayList<AnalyzedInsn>(frames.length);
-        mn.instructions.forEach(insn -> {
-          analyzed.add(new AnalyzedInsn(insn, frameIterator.next()));
-        });
+      modified |= Analyzed.analyzed(
+        th, cn, mn,
+        analyzed -> {
+          var modifiedMethod = false;
+          for (var i = analyzed.size() - 1; i >= 0; i--) {
+            var item = analyzed.get(i);
 
-        for (var i = analyzed.size() - 1; i >= 0; i--) {
-          var item = analyzed.get(i);
+            if (
+              item.insn() instanceof MethodInsnNode min
+              && AsmHelper.isCallHook(min, "$safe", "$(?)->?")
+            ) {
+              modifiedMethod = true;
+              var label = new LabelNode();
+              var labelNotInstance = new LabelNode();
+              analyzed.set(i, new Analyzed.InsnFrame(label, item.frame()));
 
-          if (
-            item.insn instanceof MethodInsnNode min
-            && AsmHelper.isCallHook(min, "$safe", "$(?)->?")
-          ) {
-            modified = true;
-            modifiedMethod = true;
-            var label = new LabelNode();
-            var labelNotInstance = new LabelNode();
-            analyzed.set(i, new AnalyzedInsn(label, item.frame));
+              var depth = AsmHelper.getStackSize(item.frame());
+              if (depth == -1) continue;
+              var operations = new ArrayList<Integer>();
 
-            var depth = AsmHelper.getStackSize(item.frame);
-            if (depth == -1) continue;
-            var operations = new ArrayList<Integer>();
+              for (var j = i; j >= 0; j--) {
+                var jtem = analyzed.get(j);
+                var jDepth = AsmHelper.getStackSize(jtem.frame());
+                if (jDepth < depth) break;
 
-            for (var j = i; j >= 0; j--) {
-              var jtem = analyzed.get(j);
-              var jDepth = AsmHelper.getStackSize(jtem.frame);
-              if (jDepth < depth) break;
-
-              if (depth == jDepth) {
-                do j--;
-                while (j >= 0 && analyzed.get(j).insn.getOpcode() <= 0);
-                j++;
-                if (jtem.frame.getStack(depth - 1).isReference()) {
-                  operations.add(j);
-                }
-              }
-            }
-
-            var l = new InsnList();
-            l.add(new JumpInsnNode(Opcodes.GOTO, label));
-            l.add(labelNotInstance);
-            l.add(new InsnNode(Opcodes.POP));
-            l.add(new InsnNode(Opcodes.ACONST_NULL));
-            insertInstructions(analyzed, i, l);
-
-            var first = true;
-
-            loop:
-            for (var operation : operations) {
-              var insn = analyzed.get(operation - 1).insn;
-
-              if (insn.getOpcode() == Opcodes.CHECKCAST) {
-                var type = ((TypeInsnNode) insn).desc;
-                var list = new InsnList();
-                list.add(new InsnNode(Opcodes.DUP));
-                list.add(new TypeInsnNode(Opcodes.INSTANCEOF, type));
-                list.add(new JumpInsnNode(Opcodes.IFEQ, labelNotInstance));
-                i += insertInstructions(analyzed, operation - 1, list);
-              } else {
-                if (!first) {
-                  var list = new InsnList();
-                  list.add(new InsnNode(Opcodes.DUP));
-                  list.add(new JumpInsnNode(Opcodes.IFNULL, label));
-                  i += insertInstructions(analyzed, operation, list);
-                }
-
-                if (
-                  insn instanceof MethodInsnNode min2
-                  && AsmHelper.isCallHook(min2, "$safe", "$(?)->?", "$unsafe")
-                ) {
-                  switch (min2.name) {
-                    case "$safe", "$" -> {
-                      throw th.raise("$safe cannot be used directly in another $safe");
-                    }
-
-                    case "$unsafe" -> {
-                      analyzed.remove(operation - 1);
-                      i -= 1;
-                      break loop;
-                    }
-
-                    default -> {}
+                if (depth == jDepth) {
+                  do j--;
+                  while (j >= 0 && analyzed.get(j).insn().getOpcode() <= 0);
+                  j++;
+                  if (jtem.frame().getStack(depth - 1).isReference()) {
+                    operations.add(j);
                   }
                 }
               }
 
-              first = false;
+              var l = new InsnList();
+              l.add(new JumpInsnNode(Opcodes.GOTO, label));
+              l.add(labelNotInstance);
+              l.add(new InsnNode(Opcodes.POP));
+              l.add(new InsnNode(Opcodes.ACONST_NULL));
+              Analyzed.insert(analyzed, i, l);
+
+              var first = true;
+
+              loop:
+              for (var operation : operations) {
+                var insn = analyzed.get(operation - 1).insn();
+
+                if (insn.getOpcode() == Opcodes.CHECKCAST) {
+                  var type = ((TypeInsnNode) insn).desc;
+                  var list = new InsnList();
+                  list.add(new InsnNode(Opcodes.DUP));
+                  list.add(new TypeInsnNode(Opcodes.INSTANCEOF, type));
+                  list.add(new JumpInsnNode(Opcodes.IFEQ, labelNotInstance));
+                  i += Analyzed.insert(analyzed, operation - 1, list);
+                } else {
+                  if (!first) {
+                    var list = new InsnList();
+                    list.add(new InsnNode(Opcodes.DUP));
+                    list.add(new JumpInsnNode(Opcodes.IFNULL, label));
+                    i += Analyzed.insert(analyzed, operation, list);
+                  }
+
+                  if (
+                    insn instanceof MethodInsnNode min2
+                    && AsmHelper.isCallHook(min2, "$safe", "$(?)->?", "$unsafe")
+                  ) {
+                    switch (min2.name) {
+                      case "$safe", "$" -> {
+                        throw th.raise("$safe cannot be used directly in another $safe");
+                      }
+
+                      case "$unsafe" -> {
+                        analyzed.remove(operation - 1);
+                        i -= 1;
+                        break loop;
+                      }
+
+                      default -> {}
+                    }
+                  }
+                }
+
+                first = false;
+              }
             }
           }
+          return modifiedMethod;
         }
-
-        if (modifiedMethod) {
-          mn.instructions.clear();
-          analyzed.forEach(item -> mn.instructions.add(item.insn));
-        }
-      } catch (AnalyzerException e) {
-        throw th.raise(e, "failed to analyze method");
-      }
+      );
     }
 
     return modified;
-  }
-
-  private int insertInstructions(List<AnalyzedInsn> list, int index, InsnList insnList) {
-    list.addAll(
-      index,
-      Arrays
-        .stream(insnList.toArray())
-        .map(it -> new AnalyzedInsn(it, new Frame<>(0, 0)))
-        .toList()
-    );
-    return insnList.size();
   }
 }

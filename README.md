@@ -80,7 +80,8 @@ The latest version numbers can be checked here:
 * Compile-time random UUID for identifiers: `_id`
 * Compile-time computations: `_const(() -> expr)`
 * Compile-time properties: `_property("name")`
-* Default and named arguments: `_defaultArgs()`, `_arg()`, `@Default`,
+* Default and named arguments: `_defaultArgs()`, `_arg()`,
+  `_default(param, value)`, `@Default`,
   `@Name`, `@ArgClass`
 
 For the bottom type, there are currently two implementations:

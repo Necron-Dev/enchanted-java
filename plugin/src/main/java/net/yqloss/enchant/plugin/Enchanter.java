@@ -54,6 +54,7 @@ public class Enchanter {
       List.of(
         ArgPass.Instance,
         DefaultArgsPass.Instance,
+        TrimDefaultPass.Instance,
         ElvisPass.Instance,
         SafePass.Instance,
         PassCastPass.Instance,
