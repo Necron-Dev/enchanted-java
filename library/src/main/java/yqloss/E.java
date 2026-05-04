@@ -858,14 +858,16 @@ public final class E {
    * type. Positional parameters that do not match any backing-method parameter
    * name cause a transformation error.
    * <p>
-   * By default the record class is an inner class named {@code Arg}; otherwise
-   * annotate the enclosing class with {@link ArgClass}. The record must be
-   * public and expose the canonical constructor and accessors for {@code name}
-   * and {@code value}:
+   * The record class must be public and expose the canonical constructor and
+   * accessors for {@code name} and {@code value}:
    * <pre>{@code
-   * public class Example {
-   *   public record Arg(String name, Object value) {}
+   * public class ExampleArg {
+   *   public ExampleArg(String name, Object value);
+   *   public String name();
+   *   public Object value();
    * }
+   *
+   * public record ExampleRecordArg(String name, Object value) {}
    * }</pre>
    * <p>
    * The backing method is found by name. For a varargs method named
@@ -928,7 +930,6 @@ public final class E {
    * @see #_arg()
    * @see #_default
    * @see Default
-   * @see ArgClass
    * @see Name
    */
   public static <T> T _defaultArgs() {
@@ -952,10 +953,9 @@ public final class E {
    * <p>
    * The Gradle plugin replaces the helper body with construction of the
    * enclosing class's argument record. The helper must be {@code static}, must
-   * take exactly one value parameter, and must return the configured argument
-   * record type: the enclosing class's {@code Arg} record by default, or the
-   * type declared with {@link ArgClass}. The generated record value stores the
-   * argument name and the boxed helper parameter value.
+   * take exactly one value parameter, and must return the argument record type.
+   * The generated record value stores the argument name and the boxed helper
+   * parameter value.
    * <p>
    * By default, the argument name is the part of the helper method name after
    * the last underscore. For example, {@code _count(int value)} produces an
@@ -964,8 +964,6 @@ public final class E {
    * <p>
    * <b>Examples:</b>
    * <pre>{@code
-   * public record Arg(String name, Object value) {}
-   *
    * public static void connect(String host, @Default("5432") int port) {
    *   // ...
    * }
@@ -990,7 +988,6 @@ public final class E {
    * @param <T> the configured argument record type.
    * @return a generated argument record after transformation.
    * @see #_defaultArgs()
-   * @see ArgClass
    * @see Name
    */
   public static <T> T _arg() {
@@ -1006,46 +1003,6 @@ public final class E {
   public static RuntimeException _arg_() {
     unpure();
     return new UnenchantedException();
-  }
-
-  /**
-   * Selects the argument record class used by {@link #_arg()} helpers and
-   * {@link #_defaultArgs()} overloads in the annotated class.
-   * <p>
-   * Without this annotation, the plugin expects a public nested record named
-   * {@code Arg} in the same class:
-   * <pre>{@code
-   * public record Arg(String name, Object value) {}
-   * }</pre>
-   * Use {@code @ArgClass} when the record has a different name or is declared
-   * elsewhere. The selected class must provide a constructor compatible with
-   * {@code (String, Object)} and {@code name()} / {@code value()} accessors;
-   * using a record is the intended shape.
-   * <p>
-   * <b>Examples:</b>
-   * <pre>{@code
-   * @ArgClass(Args.Named.class)
-   * public class Api {
-   *   public static Args.Named _host(String value) { return _arg(); }
-   * }
-   *
-   * public final class Args {
-   *   public record Named(String name, Object value) {}
-   * }
-   * }</pre>
-   *
-   * @see #_defaultArgs()
-   * @see #_arg()
-   */
-  @Retention(RetentionPolicy.CLASS)
-  @Target(ElementType.TYPE)
-  public @interface ArgClass {
-    /**
-     * The argument record class used by transformed named-argument helpers.
-     *
-     * @return the class that stores an argument name and value.
-     */
-    Class<?> value();
   }
 
   /**
@@ -1084,8 +1041,6 @@ public final class E {
    * <p>
    * <b>Examples:</b>
    * <pre>{@code
-   * public record Arg(String name, Object value) {}
-   *
    * public static void open(
    *   String host,
    *   @Default("8080") int port,
@@ -1148,8 +1103,6 @@ public final class E {
    * <p>
    * <b>Examples:</b>
    * <pre>{@code
-   * public record Arg(String name, Object value) {}
-   *
    * @Name("create")
    * public User(String login, @Name("display-name") @Default String displayName) {
    *   // ...

@@ -82,7 +82,7 @@ The latest version numbers can be checked here:
 * Compile-time properties: `_property("name")`
 * Default and named arguments: `_defaultArgs()`, `_arg()`,
   `throw _defaultArgs_()`, `throw _arg_()` `_default(param, value)`, `@Default`,
-  `@Name`, `@ArgClass`
+  `@Name`
 * Discarded value receiver: `_receiver(r)`, `$ = sent`, `__ = notSent`
 
 For the bottom type, there are currently two implementations:

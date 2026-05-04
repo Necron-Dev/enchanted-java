@@ -14,13 +14,6 @@ public enum ArgPass implements Pass {
   @Override
   public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
-    var argClass = AsmHelper.fromAnnotation(
-      cn.invisibleAnnotations,
-      "Lyqloss/E$ArgClass;",
-      (Type t) -> t.getInternalName(),
-      () -> cn.name + "$Arg"
-    );
-
     for (var mn : cn.methods) {
       var th = new ThrowHelper("arg", cn, mn);
       if (AsmHelper.containsStub(mn.instructions, "_arg", "_arg_")) {
@@ -30,13 +23,10 @@ public enum ArgPass implements Pass {
           (mn.access & Opcodes.ACC_STATIC) == 0
           || desc.getArgumentCount() != 1
           || desc.getReturnType().getSort() != Type.OBJECT
-          || !argClass.equals(desc.getReturnType().getInternalName())
         ) {
-          throw th.raise(
-            "_arg methods must be static, contain exactly one argument, and return %s",
-            argClass
-          );
+          throw th.raise("_arg methods must be static and take exactly one argument");
         }
+        var argClass = desc.getReturnType().getInternalName();
         mn.tryCatchBlocks.clear();
         var list = mn.instructions;
         list.clear();

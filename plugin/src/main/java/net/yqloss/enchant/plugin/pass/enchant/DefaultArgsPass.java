@@ -62,13 +62,6 @@ public enum DefaultArgsPass implements Pass {
   public boolean accept(ClassNode cn, ClassLoader classLoader) {
     var modified = false;
     var objectType = Type.getType(Object.class);
-    var argClass = AsmHelper.fromAnnotation(
-      cn.invisibleAnnotations,
-      "Lyqloss/E$ArgClass;",
-      (Type t) -> t.getInternalName(),
-      () -> cn.name + "$Arg"
-    );
-
     for (var mn : cn.methods) {
       var th = new ThrowHelper("default-args", cn, mn);
       if (AsmHelper.containsStub(mn.instructions, "_defaultArgs", "_defaultArgs_")) {
@@ -80,13 +73,12 @@ public enum DefaultArgsPass implements Pass {
           && (Object) desc.getArgumentTypes()[desc.getArgumentCount() - 1] instanceof Type t
           && t.getSort() == Type.ARRAY
           && t.getElementType().getSort() == Type.OBJECT
-          && argClass.equals(t.getElementType().getInternalName())
         )) {
           throw th.raise(
-            "_defaultArgs methods must take the last argument with type %s[]",
-            argClass
+            "_defaultArgs methods must take a vararg of an object type"
           );
         }
+        var argClass = t.getElementType().getInternalName();
 
         var backing = AsmHelper.fromAnnotation(
           mn.invisibleAnnotations,
