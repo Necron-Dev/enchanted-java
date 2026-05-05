@@ -39,7 +39,7 @@ public enum ArgPass implements Pass {
         var argName = AsmHelper.fromAnnotation(
           mn.invisibleAnnotations,
           "Lyqloss/E$Name;",
-          () -> mn.name.substring(mn.name.lastIndexOf('_') + 1)
+          () -> mn.name.substring(mn.name.lastIndexOf('_') + 1).replace("$", "")
         );
         list.add(new TypeInsnNode(Opcodes.NEW, argClass));
         list.add(new InsnNode(Opcodes.DUP));
