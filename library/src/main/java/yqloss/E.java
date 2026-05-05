@@ -1371,4 +1371,33 @@ public final class E {
   public static void _unpure() {
     unpure();
   }
+
+  /**
+   * Computes a value once and reuses it from a generated class-local static
+   * cache field.
+   * <p>
+   * This method is a compile-time token. The Gradle plugin replaces each
+   * {@code _cached(() -> expr)} call site with a read from a newly generated
+   * internal static {@code Object} field on the transformed class. That field
+   * is initialized once in class initialization by invoking the supplied lambda
+   * and storing {@link Supplier#get()} result. Subsequent reads return the same
+   * cached value.
+   * <p>
+   * <b>Usage Constraint:</b> the supplier must be a lambda without captures.
+   * Capturing locals or instance state will fail during transformation.
+   * <p>
+   * <b>Examples:</b>
+   * <pre>{@code
+   * // Each call site gets its own generated cache field in the class.
+   * var id = _cached(() -> UUID.randomUUID().toString());
+   * }</pre>
+   *
+   * @param supplier capture-free supplier used to compute the cached value.
+   * @param <T>      the cached value type.
+   * @return the value loaded from the generated cache field.
+   */
+  public static <T> T _cached(Supplier<? extends T> supplier) {
+    unpure();
+    return supplier.get();
+  }
 }

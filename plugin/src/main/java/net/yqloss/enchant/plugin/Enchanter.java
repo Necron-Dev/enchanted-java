@@ -67,6 +67,7 @@ public class Enchanter {
         ThrowPass.Instance,
         ReturnPass.Instance,
         new PropertyPass(properties),
+        CachedPass.Instance,
         TrimAnnotationPass.Instance,
         CompileTimePass.Instance,
         CheckerPass.Instance

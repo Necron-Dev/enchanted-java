@@ -79,6 +79,7 @@ The latest version numbers can be checked here:
 * Unchecked cast without warning: `_cast(value)`
 * Compile-time random UUID for identifiers: `_id`
 * Compile-time computations: `_const(() -> expr)`
+* Class-local cached computation: `_cached(() -> expr)`
 * Compile-time properties: `_property("name")`
 * Default and named arguments: `_defaultArgs()`, `_arg()`,
   `throw _defaultArgs_()`, `throw _arg_()` `_default(param, value)`, `@Default`,
