@@ -44,7 +44,9 @@ public class AsmHelper {
   public static void createInternalField(ClassNode cn, String name, String desc, Consumer<Consumer<AbstractInsnNode>> initializer) {
     cn.fields.removeIf(x -> Objects.equals(x.name, name));
     cn.fields.add(new FieldNode(
-      Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC | Opcodes.ACC_TRANSIENT,
+      (cn.access & Opcodes.ACC_INTERFACE) == 0
+      ? Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC | Opcodes.ACC_TRANSIENT
+      : Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
       name, desc, null, null
     ));
     var init = getOrCreateClassInitializer(cn);
