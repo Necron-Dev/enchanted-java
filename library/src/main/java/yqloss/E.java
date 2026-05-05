@@ -829,9 +829,21 @@ public final class E {
    * The Gradle plugin replaces the body of a method containing this token with
    * bytecode that reads an array of argument records, fills the backing
    * method's parameters by name, computes missing parameters annotated with
-   * {@link Default}, and delegates to the backing method. Duplicate argument
-   * names, unknown names, {@code null} argument records, and missing required
-   * arguments fail with {@link IllegalArgumentException}.
+   * {@link Default}, and delegates to the backing method.
+   * <p>
+   * Behavior differs between normal and strict modes:
+   * <ul>
+   *   <li><b>Normal mode</b> ({@code _defaultArgs} / {@code _defaultArgs_}):
+   *       duplicate arguments use the last value; vararg items whose names map
+   *       to positional parameters are ignored; vararg items whose names do not
+   *       exist fail with {@link IllegalArgumentException}.</li>
+   *   <li><b>Strict mode</b> ({@code _defaultArgsStrict} /
+   *       {@code _defaultArgsStrict_}): duplicate arguments fail;
+   *       vararg items whose names map to positional parameters, or whose names
+   *       do not exist, fail with {@link IllegalArgumentException}.</li>
+   * </ul>
+   * In both modes, {@code null} argument records and missing required arguments
+   * fail with {@link IllegalArgumentException}.
    * <p>
    * Default values for optional parameters can be provided in three ways:
    * <ol>
@@ -858,8 +870,8 @@ public final class E {
    * type. Positional parameters that do not match any backing-method parameter
    * name cause a transformation error.
    * <p>
-   * The record class must be public and expose the canonical constructor and
-   * accessors for {@code name} and {@code value}:
+   * The argument record class must be public and expose the canonical
+   * constructor and accessors for {@code name} and {@code value}:
    * <pre>{@code
    * public class ExampleArg {
    *   public ExampleArg(String name, Object value);
@@ -869,6 +881,9 @@ public final class E {
    *
    * public record ExampleRecordArg(String name, Object value) {}
    * }</pre>
+   * A special unpacking form is also supported: an item shaped as
+   * {@code (null, Arg[])} expands the nested array into the current vararg
+   * stream. Unpacking cannot be nested.
    * <p>
    * The backing method is found by name. For a varargs method named
    * {@code f(Arg... args)}, the backing method is normally {@code f(...)}. If
@@ -938,7 +953,24 @@ public final class E {
   }
 
   /**
-   * Alias for {@link #_defaultArgs} but returns {@link RuntimeException}.
+   * Strict variant of {@link #_defaultArgs()}.
+   * <p>
+   * Compared to {@code _defaultArgs()}, this variant rejects duplicate
+   * arguments, and rejects vararg items whose names map to positional
+   * parameters or do not exist.
+   *
+   * @param <T> the return type of the backing method.
+   * @return the value returned by the backing method after transformation.
+   * @see #_defaultArgs()
+   */
+  public static <T> T _defaultArgsStrict() {
+    unpure();
+    return unknown();
+  }
+
+  /**
+   * Alias for {@link #_defaultArgs} that is intended for
+   * {@code throw _defaultArgs_()} style usage.
    *
    * @see #_arg
    */
@@ -948,14 +980,36 @@ public final class E {
   }
 
   /**
+   * Alias for {@link #_defaultArgsStrict()} that is intended for
+   * {@code throw _defaultArgsStrict_()} style usage.
+   * <p>
+   * Compared to {@link #_defaultArgs_()}, this variant uses strict behavior:
+   * duplicate arguments fail, and vararg items targeting positional or unknown
+   * names fail.
+   *
+   * @see #_defaultArgsStrict()
+   * @see #_defaultArgs_()
+   */
+  public static RuntimeException _defaultArgsStrict_() {
+    unpure();
+    return new UnenchantedException();
+  }
+
+  /**
    * Marks a single-parameter static helper as a named-argument constructor for
    * use with a {@link #_defaultArgs()} overload.
    * <p>
    * The Gradle plugin replaces the helper body with construction of the
-   * enclosing class's argument record. The helper must be {@code static}, must
-   * take exactly one value parameter, and must return the argument record type.
-   * The generated record value stores the argument name and the boxed helper
-   * parameter value.
+   * enclosing class's argument record. The helper must return the argument
+   * record type, and must be either:
+   * <ul>
+   *   <li>a one-parameter method (static or instance), where that parameter is
+   *       used as the argument value, or</li>
+   *   <li>a zero-parameter instance method, where {@code this} is used as the
+   *       argument value.</li>
+   * </ul>
+   * The generated record value stores the argument name and the boxed selected
+   * value.
    * <p>
    * By default, the argument name is the part of the helper method name after
    * the last underscore. For example, {@code _count(int value)} produces an
@@ -997,6 +1051,8 @@ public final class E {
 
   /**
    * Alias for {@link #_arg} but returns {@link RuntimeException}.
+   * <p>
+   * It follows the same transformation rules as {@link #_arg()}.
    *
    * @see #_arg
    */

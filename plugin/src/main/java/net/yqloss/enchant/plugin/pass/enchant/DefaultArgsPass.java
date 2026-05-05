@@ -35,8 +35,7 @@ public enum DefaultArgsPass implements Pass {
     int stack,
     String name,
     Type type,
-    DefaultValue defaultValue,
-    LabelNode missingDependenciesError
+    DefaultValue defaultValue
   ) {
     int getHelper() {
       return index >> 5;
@@ -64,7 +63,15 @@ public enum DefaultArgsPass implements Pass {
     var objectType = Type.getType(Object.class);
     for (var mn : cn.methods) {
       var th = new ThrowHelper("default-args", cn, mn);
-      if (AsmHelper.containsStub(mn.instructions, "_defaultArgs", "_defaultArgs_")) {
+      var containsNormalStub = AsmHelper.containsStub(
+        mn.instructions,
+        "_defaultArgs", "_defaultArgs_"
+      );
+      var containsStrictStub = AsmHelper.containsStub(
+        mn.instructions,
+        "_defaultArgsStrict", "_defaultArgsStrict_"
+      );
+      if (containsNormalStub || containsStrictStub) {
         modified = true;
 
         var desc = Type.getMethodType(mn.desc);
@@ -143,11 +150,13 @@ public enum DefaultArgsPass implements Pass {
           argsIndex += type.getSize();
         }
         var tempIndex = argsIndex + 1;
-        mn.maxLocals = tempIndex + 1;
+        var storedIndex = tempIndex + 1;
+        mn.maxLocals = storedIndex + 1;
         mn.tryCatchBlocks.clear();
         var list = mn.instructions;
         list.clear();
         TypeHelper.init(list::add, objectType, tempIndex);
+        TypeHelper.init(list::add, Type.INT_TYPE, storedIndex);
         var helperIntIndex = mn.maxLocals;
         var helperCount = (backingDesc.getArgumentCount() - positionalArgs.size() + 31) >> 5;
         mn.maxLocals += helperCount;
@@ -178,7 +187,6 @@ public enum DefaultArgsPass implements Pass {
               positional.index,
               name,
               type,
-              null,
               null
             );
           } else {
@@ -196,8 +204,7 @@ public enum DefaultArgsPass implements Pass {
                   inlineDefaults.apply(name)
                 ),
                 () -> null
-              ),
-              new LabelNode()
+              )
             );
             params.add(param);
             TypeHelper.init(list::add, type, mn.maxLocals);
@@ -233,108 +240,8 @@ public enum DefaultArgsPass implements Pass {
           }
         }
 
-        var loopLabel = new LabelNode();
-        var breakLabel = new LabelNode();
-        var entryNullLabel = new LabelNode();
-        list.add(new InsnNode(Opcodes.ICONST_0));
-        // [i]
-        list.add(loopLabel);
-        list.add(new VarInsnNode(Opcodes.ALOAD, argsIndex));
-        // [i, args]
-        list.add(new JumpInsnNode(Opcodes.IFNULL, breakLabel));
-        // [i]
-
-        // while (i <= args.length)
-        list.add(new VarInsnNode(Opcodes.ALOAD, argsIndex));
-        // [i, args]
-        list.add(new InsnNode(Opcodes.ARRAYLENGTH));
-        // [i, args.length]
-        list.add(new InsnNode(Opcodes.SWAP));
-        // [args.length, i]
-        list.add(new InsnNode(Opcodes.DUP_X1));
-        // [i, args.length, i]
-        list.add(new JumpInsnNode(Opcodes.IF_ICMPLE, breakLabel));
-        // [i]
-
-        // switch (args[i].name) and leave a copy of args[i] and args[i].name
-        list.add(new VarInsnNode(Opcodes.ALOAD, argsIndex));
-        // [i, args]
-        list.add(new InsnNode(Opcodes.SWAP));
-        // [args, i]
-        list.add(new InsnNode(Opcodes.DUP_X1));
-        // [i, args, i]
-        list.add(new InsnNode(Opcodes.AALOAD));
-        // [i, args[i]]
-        list.add(new InsnNode(Opcodes.DUP));
-        // [i, args[i], args[i]]
-        list.add(new JumpInsnNode(Opcodes.IFNULL, entryNullLabel));
-        // [i, args[i]]
-        list.add(new InsnNode(Opcodes.DUP));
-        // [i, args[i], args[i]]
-        list.add(new MethodInsnNode(
-          Opcodes.INVOKEVIRTUAL,
-          argClass,
-          "name",
-          "()Ljava/lang/String;"
-        ));
-        // [i, args[i], args[i].name]
-        list.add(new InsnNode(Opcodes.DUP));
-        // [i, args[i], args[i].name, args[i].name]
-
-        // if (name == null) throw new IllegalArgumentException(...);
-        var switchBegin = new LabelNode();
-        list.add(new JumpInsnNode(Opcodes.IFNONNULL, switchBegin));
-        list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/IllegalArgumentException"));
-        list.add(new InsnNode(Opcodes.DUP));
-        list.add(new LdcInsnNode("argument name cannot be null"));
-        list.add(new MethodInsnNode(
-          Opcodes.INVOKESPECIAL,
-          "java/lang/IllegalArgumentException",
-          "<init>",
-          "(Ljava/lang/String;)V"
-        ));
-        list.add(new InsnNode(Opcodes.ATHROW));
-
-        var alreadyFilledError = new LabelNode();
-        list.add(alreadyFilledError);
-        // [i, args[i], args[i].name, helper, helperBit]
-        list.add(new InsnNode(Opcodes.POP2));
-        // [i, args[i], args[i].name]
-        list.add(new VarInsnNode(Opcodes.ASTORE, tempIndex));
-        // [i, args[i]]
-        // throw new IllegalArgumentException(...)
-        list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/IllegalArgumentException"));
-        list.add(new InsnNode(Opcodes.DUP));
-        TypeHelper.buildString(
-          list::add,
-          l -> "parameter already filled: ",
-          l -> {
-            l.accept(new VarInsnNode(Opcodes.ALOAD, tempIndex));
-            return null;
-          }
-        );
-        list.add(new MethodInsnNode(
-          Opcodes.INVOKESPECIAL,
-          "java/lang/IllegalArgumentException",
-          "<init>",
-          "(Ljava/lang/String;)V"
-        ));
-        list.add(new InsnNode(Opcodes.ATHROW));
-
-        list.add(switchBegin);
-        // [i, args[i], args[i].name]
-        list.add(new InsnNode(Opcodes.DUP));
-        // [i, args[i], args[i].name, args[i].name]
-        list.add(new MethodInsnNode(
-          Opcodes.INVOKEVIRTUAL,
-          "java/lang/String",
-          "hashCode",
-          "()I"
-        ));
-        // [i, args[i], args[i].name, args[i].name.hashCode()]
-
         var branches = new HashMap<Integer, Branch>();
-        for (var param : params) {
+        for (var param : allParams) {
           var hashCode = param.name.hashCode();
           if (!branches.containsKey(hashCode)) {
             branches.put(hashCode, new Branch(new LabelNode(), new ArrayList<>()));
@@ -345,13 +252,201 @@ public enum DefaultArgsPass implements Pass {
                               .sorted(Map.Entry.comparingByKey())
                               .toList();
 
+        var errors = new ErrorTable();
+        var loopLabel = new LabelNode();
+        var breakLabel = new LabelNode();
+
+        // if (args == null) goto skip;
+        // push args.length, i = 0;
+        list.add(new InsnNode(Opcodes.ICONST_0));
+        // [0]
+        list.add(new InsnNode(Opcodes.ICONST_0));
+        // [0, 0]
+        list.add(new VarInsnNode(Opcodes.ALOAD, argsIndex));
+        // [0, 0, args]
+        list.add(new JumpInsnNode(Opcodes.IFNULL, breakLabel));
+        // [0, 0]
+        list.add(new InsnNode(Opcodes.POP2));
+        // []
+        list.add(new VarInsnNode(Opcodes.ALOAD, argsIndex));
+        // [args]
+        list.add(new InsnNode(Opcodes.ARRAYLENGTH));
+        // [args.length]
+        list.add(new InsnNode(Opcodes.ICONST_0));
+        // [args.length, i]
+
+        // while (i < args.length)
+        list.add(loopLabel);
+        // [args.length, i]
+        list.add(new InsnNode(Opcodes.DUP2));
+        // [args.length, i, args.length, i]
+        list.add(new JumpInsnNode(Opcodes.IF_ICMPLE, breakLabel));
+        // [args.length, i]
+
+        // if (args[i] == null) throw;
+        list.add(new VarInsnNode(Opcodes.ALOAD, argsIndex));
+        // [args.length, i, args]
+        list.add(new InsnNode(Opcodes.SWAP));
+        // [args.length, args, i]
+        list.add(new InsnNode(Opcodes.DUP_X1));
+        // [args.length, i, args, i]
+        list.add(new InsnNode(Opcodes.AALOAD));
+        // [args.length, i, args[i]]
+        list.add(new InsnNode(Opcodes.DUP));
+        // [args.length, i, args[i], args[i]]
+        list.add(new JumpInsnNode(
+          Opcodes.IFNULL,
+          errors.add(
+            IllegalArgumentException.class, list::add, () -> {
+              list.add(new LdcInsnNode("argument item cannot be null"));
+            }
+          )
+        ));
+        // [args.length, i, args[i]]
+
+        // if (args[i].name == null) goto unpack;
+        // else goto switch;
+        list.add(new InsnNode(Opcodes.DUP));
+        // [args.length, i, args[i], args[i]]
+        list.add(new MethodInsnNode(
+          Opcodes.INVOKEVIRTUAL,
+          argClass,
+          "name",
+          "()Ljava/lang/String;"
+        ));
+        // [args.length, i, args[i], args[i].name]
+        list.add(new InsnNode(Opcodes.DUP));
+        // [args.length, i, args[i], args[i].name, args[i].name]
+        var switchBegin = new LabelNode();
+        list.add(new JumpInsnNode(Opcodes.IFNONNULL, switchBegin));
+        // [args.length, i, args[i], args[i].name]
+        list.add(new InsnNode(Opcodes.POP));
+        // [args.length, i, args[i]]
+
+        // if (storedArgs != null) throw;
+        // if (args[i].value !is Arg[]) throw;
+        // storedArgs = args;
+        // args = args[i].value;
+        // storedIndex = i;
+        // push args.length, i = 0;
+        // continue;
+        list.add(new VarInsnNode(Opcodes.ALOAD, tempIndex));
+        // [args.length, i, args[i], temp]
+        list.add(new JumpInsnNode(
+          Opcodes.IFNONNULL,
+          errors.add(
+            IllegalArgumentException.class, list::add, () -> {
+              list.add(new LdcInsnNode("nested unpacking is not allowed"));
+            }
+          )
+        ));
+        // [args.length, i, args[i]]
+        list.add(new MethodInsnNode(
+          Opcodes.INVOKEVIRTUAL,
+          argClass,
+          "value",
+          "()Ljava/lang/Object;"
+        ));
+        // [args.length, i, args[i].value]
+        list.add(new InsnNode(Opcodes.DUP));
+        // [args.length, i, args[i].value, args[i].value]
+        list.add(new TypeInsnNode(Opcodes.INSTANCEOF, "[L" + argClass + ";"));
+        // [args.length, i, args[i].value, instanceof]
+        list.add(new JumpInsnNode(
+          Opcodes.IFEQ,
+          errors.add(
+            IllegalArgumentException.class, list::add, () -> {
+              list.add(new LdcInsnNode(String.format(
+                "only %s[] can be unpacked", argClass
+              )));
+            }
+          )
+        ));
+        // [args.length, i, args[i].value]
+        list.add(new TypeInsnNode(Opcodes.CHECKCAST, "[L" + argClass + ";"));
+        // [args.length, i, args[i].value]
+        list.add(new InsnNode(Opcodes.DUP_X2));
+        // [args[i].value, args.length, i, args[i].value]
+        list.add(new VarInsnNode(Opcodes.ALOAD, argsIndex));
+        // [args[i].value, args.length, i, args[i].value, args]
+        list.add(new VarInsnNode(Opcodes.ASTORE, tempIndex));
+        // [args[i].value, args.length, i, args[i].value]
+        list.add(new VarInsnNode(Opcodes.ASTORE, argsIndex));
+        // [args[i].value, args.length, i]
+        list.add(new InsnNode(Opcodes.ICONST_1));
+        // [args[i].value, args.length, i, 1]
+        list.add(new InsnNode(Opcodes.IADD));
+        // [args[i].value, args.length, i + 1]
+        list.add(new VarInsnNode(Opcodes.ISTORE, storedIndex));
+        // [args[i].value, args.length]
+        list.add(new InsnNode(Opcodes.POP));
+        // [args[i].value]
+        list.add(new InsnNode(Opcodes.ARRAYLENGTH));
+        // [unpack.length]
+        list.add(new InsnNode(Opcodes.ICONST_0));
+        // [unpack.length, 0]
+        list.add(new JumpInsnNode(Opcodes.GOTO, loopLabel));
+
+        var alreadyFilledError = containsStrictStub ? errors.add(
+          IllegalArgumentException.class, list::add,
+          () -> {
+            // [args.length, i, args[i], args[i].name, helper, helperBit]
+            list.add(new InsnNode(Opcodes.POP2));
+            // [args.length, i, args[i], args[i].name]
+            list.add(new VarInsnNode(Opcodes.ASTORE, tempIndex));
+            // [args.length, i, args[i]]
+          },
+          () -> {
+            TypeHelper.buildString(
+              list::add,
+              l -> "duplicate arguments: ",
+              l -> {
+                l.accept(new VarInsnNode(Opcodes.ALOAD, tempIndex));
+                return null;
+              }
+            );
+          }
+        ) : null;
+
         var switchEnd = new LabelNode();
-        var switchDefault = new LabelNode();
+        var switchDefault = errors.add(
+          IllegalArgumentException.class, list::add,
+          () -> {
+            // [args.length, i, args[i], args[i].name]
+            list.add(new VarInsnNode(Opcodes.ASTORE, tempIndex));
+            // [args.length, i, args[i]]
+          },
+          () -> {
+            TypeHelper.buildString(
+              list::add,
+              l -> "unexpected argument name: ",
+              l -> {
+                l.accept(new VarInsnNode(Opcodes.ALOAD, tempIndex));
+                return null;
+              }
+            );
+          }
+        );
+
+        // switch (args[i].name)
+        list.add(switchBegin);
+        // [args.length, i, args[i], args[i].name]
+        list.add(new InsnNode(Opcodes.DUP));
+        // [args.length, i, args[i], args[i].name, args[i].name]
+        list.add(new MethodInsnNode(
+          Opcodes.INVOKEVIRTUAL,
+          "java/lang/String",
+          "hashCode",
+          "()I"
+        ));
+        // [args.length, i, args[i], args[i].name, args[i].name.hashCode()]
+
         list.add(new LookupSwitchInsnNode(
           switchDefault,
           branchEntries.stream().mapToInt(Map.Entry::getKey).toArray(),
           branchEntries.stream().map(x -> x.getValue().label).toArray(LabelNode[]::new)
         ));
+        // [args.length, i, args[i], args[i].name]
 
         for (var branch : branchEntries) {
           list.add(branch.getValue().label());
@@ -359,179 +454,140 @@ public enum DefaultArgsPass implements Pass {
           var remaining = branch.getValue().params.size();
           for (var param : branch.getValue().params) {
             remaining--;
+
+            // if (name != "xxx") goto nextBranch;
             if (paramLabel != null) list.add(paramLabel);
-            // [i, args[i], args[i].name]
+            // [args.length, i, args[i], args[i].name]
             list.add(new InsnNode(Opcodes.DUP));
-            // [i, args[i], args[i].name, args[i].name]
+            // [args.length, i, args[i], args[i].name, args[i].name]
             list.add(new LdcInsnNode(param.name));
-            // [i, args[i], args[i].name, args[i].name, param.name]
+            // [args.length, i, args[i], args[i].name, args[i].name, param.name]
             list.add(new MethodInsnNode(
               Opcodes.INVOKEVIRTUAL,
               "java/lang/String",
               "equals",
               "(Ljava/lang/Object;)Z"
             ));
-            // [i, args[i], args[i].name, isTheParam]
+            // [args.length, i, args[i], args[i].name, isTheParam]
             paramLabel = remaining == 0 ? switchDefault : new LabelNode();
             list.add(new JumpInsnNode(Opcodes.IFEQ, paramLabel));
-            // [i, args[i], args[i].name]
+            // [args.length, i, args[i], args[i].name]
+
+            if (param.index == -1) {
+              if (containsStrictStub) {
+                var label = errors.add(
+                  IllegalArgumentException.class, list::add,
+                  () -> {
+                    list.add(new LdcInsnNode("positional argument " + param.name + "cannot be specified in vararg"));
+                  }
+                );
+                errors.insert(label);
+                list.remove(label);
+              } else {
+                list.add(new InsnNode(Opcodes.POP2));
+                // [args.length, i, args[i]]
+                list.add(new JumpInsnNode(Opcodes.GOTO, switchEnd));
+              }
+              continue;
+            }
+
             list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + param.getHelper()));
-            // [i, args[i], args[i].name, helper]
+            // [args.length, i, args[i], args[i].name, helper]
             list.add(new LdcInsnNode(param.getHelperBit()));
-            // [i, args[i], args[i].name, helper, helperBit]
-            list.add(new InsnNode(Opcodes.DUP2));
-            // [i, args[i], args[i].name, helper, helperBit, helper, helperBit]
-            list.add(new InsnNode(Opcodes.IAND));
-            // [i, args[i], args[i].name, helper, helperBit, theBit]
-            list.add(new JumpInsnNode(Opcodes.IFNE, alreadyFilledError));
-            // [i, args[i], args[i].name, helper, helperBit]
+            // [args.length, i, args[i], args[i].name, helper, helperBit]
+
+            if (containsStrictStub) {
+              // if (helper & BIT) throw;
+              list.add(new InsnNode(Opcodes.DUP2));
+              // [args.length, i, args[i], args[i].name, helper, helperBit, helper, helperBit]
+              list.add(new InsnNode(Opcodes.IAND));
+              // [args.length, i, args[i], args[i].name, helper, helperBit, theBit]
+              list.add(new JumpInsnNode(Opcodes.IFNE, alreadyFilledError));
+              // [args.length, i, args[i], args[i].name, helper, helperBit]
+            }
+
+            // helper |= BIT;
+            // argValue = (cast) value;
+            // break;
             list.add(new InsnNode(Opcodes.IOR));
-            // [i, args[i], args[i].name, modifiedHelper]
+            // [args.length, i, args[i], args[i].name, modifiedHelper]
             list.add(new VarInsnNode(Opcodes.ISTORE, helperIntIndex + param.getHelper()));
-            // [i, args[i], args[i].name]
+            // [args.length, i, args[i], args[i].name]
             list.add(new InsnNode(Opcodes.POP));
-            // [i, args[i]]
+            // [args.length, i, args[i]]
             list.add(new MethodInsnNode(
               Opcodes.INVOKEVIRTUAL,
               argClass,
               "value",
               "()Ljava/lang/Object;"
             ));
-            // [i, args[i].value]
+            // [args.length, i, args[i].value]
             TypeHelper.convert(list::add, objectType, param.type);
-            // [i, value]
+            // [args.length, i, value]
             list.add(new VarInsnNode(param.type.getOpcode(Opcodes.ISTORE), param.stack));
-            // [i]
+            // [args.length, i]
             list.add(new JumpInsnNode(Opcodes.GOTO, switchEnd));
           }
         }
 
-        // default ->
-        list.add(switchDefault);
-        // [i, args[i], args[i].name]
-        list.add(new VarInsnNode(Opcodes.ASTORE, tempIndex));
-        // [i, args[i]]
-        // throw new IllegalArgumentException(...)
-        list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/IllegalArgumentException"));
-        list.add(new InsnNode(Opcodes.DUP));
-        TypeHelper.buildString(
-          list::add,
-          l -> "unexpected argument name: ",
-          l -> {
-            l.accept(new VarInsnNode(Opcodes.ALOAD, tempIndex));
-            return null;
-          }
-        );
-        list.add(new MethodInsnNode(
-          Opcodes.INVOKESPECIAL,
-          "java/lang/IllegalArgumentException",
-          "<init>",
-          "(Ljava/lang/String;)V"
-        ));
-        list.add(new InsnNode(Opcodes.ATHROW));
+//        if (!containsStrictStub) {
+//          list.add(switchDefault);
+//          // [args.length, i, args[i], args[i].name]
+//          list.add(new InsnNode(Opcodes.POP2));
+//        }
 
         list.add(switchEnd);
-        // [i]
+        // [args.length, i]
 
-        // i++
+        // i++;
+        // continue;
         list.add(new InsnNode(Opcodes.ICONST_1));
-        // [i, 1]
+        // [args.length, i, 1]
         list.add(new InsnNode(Opcodes.IADD));
-        // [i++]
+        // [args.length, i + 1]
         list.add(new JumpInsnNode(Opcodes.GOTO, loopLabel));
 
-        list.add(entryNullLabel);
-        list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/IllegalArgumentException"));
-        list.add(new InsnNode(Opcodes.DUP));
-        list.add(new LdcInsnNode("argument item cannot be null"));
-        list.add(new MethodInsnNode(
-          Opcodes.INVOKESPECIAL,
-          "java/lang/IllegalArgumentException",
-          "<init>",
-          "(Ljava/lang/String;)V"
-        ));
-        list.add(new InsnNode(Opcodes.ATHROW));
-
-        var notAllFilledError = new LabelNode();
-        list.add(notAllFilledError);
-        list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/IllegalArgumentException"));
-        list.add(new InsnNode(Opcodes.DUP));
-        TypeHelper.buildString(
-          list::add,
-          (l, r) -> {
-            r.accept("missing arguments:");
-            for (var param : params) {
-              var skip = new LabelNode();
-              list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + param.getHelper()));
-              // [helper]
-              list.add(new LdcInsnNode(param.getHelperBit()));
-              // [helper, helperBit]
-              list.add(new InsnNode(Opcodes.IAND));
-              // [theBit]
-              list.add(new JumpInsnNode(Opcodes.IFNE, skip));
-              // []
-              r.accept(" " + param.name);
-              // []
-              list.add(skip);
-              // []
-            }
-          }
-        );
-        list.add(new MethodInsnNode(
-          Opcodes.INVOKESPECIAL,
-          "java/lang/IllegalArgumentException",
-          "<init>",
-          "(Ljava/lang/String;)V"
-        ));
-        list.add(new InsnNode(Opcodes.ATHROW));
-
-        for (var param : params) {
-          var def = param.defaultValue;
-          if (def == null || def.dependencies().isEmpty()) continue;
-          list.add(param.missingDependenciesError);
-          list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/IllegalArgumentException"));
-          list.add(new InsnNode(Opcodes.DUP));
-          TypeHelper.buildString(
-            list::add,
-            (l, r) -> {
-              r.accept("parameter " + param.name + " is missing dependencies:");
-              for (var dep : def.dependencies()) {
-                var param2 = nameToParam.get(dep.name);
-                if (param2.index == -1) continue;
-                var skip2 = new LabelNode();
-                list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + param2.getHelper()));
-                // [helper]
-                list.add(new LdcInsnNode(param2.getHelperBit()));
-                // [helper, helperBit]
-                list.add(new InsnNode(Opcodes.IAND));
-                // [theBit]
-                list.add(new JumpInsnNode(Opcodes.IFNE, skip2));
-                // []
-                r.accept(" " + dep.name);
-                // []
-                list.add(skip2);
-                // []
-              }
-            }
-          );
-          list.add(new MethodInsnNode(
-            Opcodes.INVOKESPECIAL,
-            "java/lang/IllegalArgumentException",
-            "<init>",
-            "(Ljava/lang/String;)V"
-          ));
-          list.add(new InsnNode(Opcodes.ATHROW));
-        }
-
+        // if (storedArgs == null) goto checkParams;
+        // args = storedArgs;
+        // i = args.length;
+        // storedArgs = null;
         list.add(breakLabel);
-        // [i]
-        list.add(new InsnNode(Opcodes.POP));
+        // [args.length, i]
+        list.add(new InsnNode(Opcodes.POP2));
+        // []
+        list.add(new VarInsnNode(Opcodes.ALOAD, tempIndex));
+        // [storedArgs]
+        var checkParams = new LabelNode();
+        list.add(new JumpInsnNode(Opcodes.IFNULL, checkParams));
+        // []
+        list.add(new VarInsnNode(Opcodes.ALOAD, tempIndex));
+        // [storedArgs]
+        list.add(new TypeInsnNode(Opcodes.CHECKCAST, "[L" + argClass + ";"));
+        // [storedArgs]
+        list.add(new InsnNode(Opcodes.DUP));
+        // [storedArgs, storedArgs]
+        list.add(new InsnNode(Opcodes.ARRAYLENGTH));
+        // [storedArgs, storedArgs.length]
+        list.add(new InsnNode(Opcodes.SWAP));
+        // [storedArgs.length, storedArgs]
+        list.add(new VarInsnNode(Opcodes.ASTORE, argsIndex));
+        // [storedArgs.length]
+        list.add(new VarInsnNode(Opcodes.ILOAD, storedIndex));
+        // [storedArgs.length, i]
+        list.add(new InsnNode(Opcodes.ACONST_NULL));
+        // [storedArgs.length, i, null]
+        list.add(new VarInsnNode(Opcodes.ASTORE, tempIndex));
+        // [storedArgs.length, i]
+        list.add(new JumpInsnNode(Opcodes.GOTO, loopLabel));
+
+        list.add(checkParams);
         // []
 
         for (var param : params) {
           var def = param.defaultValue;
           if (def == null) continue;
 
+          // if (helper & BIT) goto skip;
           var skip = new LabelNode();
           list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + param.getHelper()));
           // [helper]
@@ -547,22 +603,55 @@ public enum DefaultArgsPass implements Pass {
             bits = bits.or(nameToParam.get(dep.name).bit);
           }
 
-          for (var i = 0; i < helperCount; i++) {
-            var bitsToCompare = bits.intValue();
-            bits = bits.shiftRight(32);
-            if (bitsToCompare == 0) continue;
-            list.add(new LdcInsnNode(bitsToCompare));
-            // [bits]
-            list.add(new InsnNode(Opcodes.DUP));
-            // [bits, bits]
-            list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + i));
-            // [bits, bits, helper]
-            list.add(new InsnNode(Opcodes.IAND));
-            // [bits, theBits]
-            list.add(new JumpInsnNode(Opcodes.IF_ICMPNE, param.missingDependenciesError));
-            // []
+          if (!BigInteger.ZERO.equals(bits)) {
+            var missingDependencies = errors.add(
+              IllegalArgumentException.class, list::add, () -> {
+                TypeHelper.buildString(
+                  list::add,
+                  (l, r) -> {
+                    r.accept("parameter " + param.name + " is missing dependencies:");
+                    for (var dep : def.dependencies()) {
+                      var param2 = nameToParam.get(dep.name);
+                      if (param2.index == -1) continue;
+                      var skip2 = new LabelNode();
+                      list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + param2.getHelper()));
+                      // [helper]
+                      list.add(new LdcInsnNode(param2.getHelperBit()));
+                      // [helper, helperBit]
+                      list.add(new InsnNode(Opcodes.IAND));
+                      // [theBit]
+                      list.add(new JumpInsnNode(Opcodes.IFNE, skip2));
+                      // []
+                      r.accept(" " + dep.name);
+                      // []
+                      list.add(skip2);
+                      // []
+                    }
+                  }
+                );
+              }
+            );
+
+            // if (helper & DEP_BITS != DEP_BITS) throw;
+            for (var i = 0; i < helperCount; i++) {
+              var bitsToCompare = bits.intValue();
+              bits = bits.shiftRight(32);
+              if (bitsToCompare == 0) continue;
+              list.add(new LdcInsnNode(bitsToCompare));
+              // [bits]
+              list.add(new InsnNode(Opcodes.DUP));
+              // [bits, bits]
+              list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + i));
+              // [bits, bits, helper]
+              list.add(new InsnNode(Opcodes.IAND));
+              // [bits, theBits]
+              list.add(new JumpInsnNode(Opcodes.IF_ICMPNE, missingDependencies));
+              // []
+            }
           }
 
+          // helper |= BIT;
+          // argValue = defaultValue();
           list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + param.getHelper()));
           // [helper]
           list.add(new LdcInsnNode(param.getHelperBit()));
@@ -579,6 +668,34 @@ public enum DefaultArgsPass implements Pass {
           // []
         }
 
+        var notAllFilledError = errors.add(
+          IllegalArgumentException.class, list::add,
+          () -> {
+            TypeHelper.buildString(
+              list::add,
+              (l, r) -> {
+                r.accept("missing arguments:");
+                for (var param : params) {
+                  var skip = new LabelNode();
+                  list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + param.getHelper()));
+                  // [helper]
+                  list.add(new LdcInsnNode(param.getHelperBit()));
+                  // [helper, helperBit]
+                  list.add(new InsnNode(Opcodes.IAND));
+                  // [theBit]
+                  list.add(new JumpInsnNode(Opcodes.IFNE, skip));
+                  // []
+                  r.accept(" " + param.name);
+                  // []
+                  list.add(skip);
+                  // []
+                }
+              }
+            );
+          }
+        );
+
+        // if (helper & ALL_BIT != ALL_BIT) throw;
         for (var i = 0; i < helperCount; i++) {
           list.add(new VarInsnNode(Opcodes.ILOAD, helperIntIndex + i));
           // [helper]
@@ -607,6 +724,7 @@ public enum DefaultArgsPass implements Pass {
           backingMethod.desc
         ));
         list.add(new InsnNode(desc.getReturnType().getOpcode(Opcodes.IRETURN)));
+        errors.insertAll();
       }
     }
 
@@ -946,7 +1064,7 @@ public enum DefaultArgsPass implements Pass {
             }
             var info = slotToVar.get(slot);
             if (map.containsKey(info.name)) {
-              throw th.raise("multiple inline default values for ", info.name);
+              throw th.raise("multiple inline default values for %s", info.name);
             }
             map.put(
               info.name,

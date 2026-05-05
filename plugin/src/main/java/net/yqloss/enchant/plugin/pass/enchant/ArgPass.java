@@ -19,18 +19,23 @@ public enum ArgPass implements Pass {
       if (AsmHelper.containsStub(mn.instructions, "_arg", "_arg_")) {
         modified = true;
         var desc = Type.getMethodType(mn.desc);
-        if (
-          (mn.access & Opcodes.ACC_STATIC) == 0
-          || desc.getArgumentCount() != 1
-          || desc.getReturnType().getSort() != Type.OBJECT
+        var isStatic = (mn.access & Opcodes.ACC_STATIC) != 0;
+        var useThis = false;
+        if (desc.getArgumentCount() == 0 && !isStatic) {
+          useThis = true;
+        } else if (
+                 desc.getArgumentCount() != 1
+                 || desc.getReturnType().getSort() != Type.OBJECT
         ) {
-          throw th.raise("_arg methods must be static and take exactly one argument");
+          throw th.raise("static _arg methods must take exactly one argument; non-static _arg methods must take zero or one argument");
         }
         var argClass = desc.getReturnType().getInternalName();
         mn.tryCatchBlocks.clear();
         var list = mn.instructions;
         list.clear();
-        var type = desc.getArgumentTypes()[0];
+        var type = useThis
+                   ? Type.getType("L" + cn.name + ";")
+                   : desc.getArgumentTypes()[0];
         var argName = AsmHelper.fromAnnotation(
           mn.invisibleAnnotations,
           "Lyqloss/E$Name;",
@@ -39,7 +44,10 @@ public enum ArgPass implements Pass {
         list.add(new TypeInsnNode(Opcodes.NEW, argClass));
         list.add(new InsnNode(Opcodes.DUP));
         list.add(new LdcInsnNode(argName));
-        list.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), 0));
+        list.add(new VarInsnNode(
+          type.getOpcode(Opcodes.ILOAD),
+          isStatic || useThis ? 0 : 1
+        ));
         TypeHelper.convert(list::add, type, Type.getType(Object.class));
         list.add(new MethodInsnNode(
           Opcodes.INVOKESPECIAL,
