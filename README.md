@@ -41,6 +41,16 @@ enchantedJava {
 import static yqloss.E.*;
 ```
 
+If you want to use hot reload, add the following JVM arguments:
+
+```text
+-javaagent:"path/to/your/enchanted-java-plugin.jar"
+-Dyqloss.enchant.prefixes=com.example.package1.,com/example/package2
+-Dyqloss.enchant.classes=/path/to/your/build/classes/java/sourceSet
+```
+
+Only classes with the specified prefixes will be transformed.
+
 The latest version numbers can be checked here:
 
 * [The library](library/build.gradle.kts) `version = "xxx"`
