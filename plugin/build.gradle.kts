@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "net.yqloss"
-version = "0.18.0"
+version = "0.19.0"
 
 repositories {
   mavenCentral()
@@ -39,26 +39,10 @@ java {
   targetCompatibility = JavaVersion.VERSION_17
 }
 
-val agentManifestAttributes = mapOf(
-  "Premain-Class" to "net.yqloss.enchant.plugin.EnchantAgent",
-  "Agent-Class" to "net.yqloss.enchant.plugin.EnchantAgent",
-  "Can-Redefine-Classes" to "true",
-  "Can-Retransform-Classes" to "true"
-)
-
-tasks.jar {
-  manifest {
-    attributes(agentManifestAttributes)
-  }
-}
-
 tasks.shadowJar {
   archiveClassifier.set("")
   configurations = listOf(shade)
   relocate("org.objectweb.asm", "net.yqloss.enchant.asm")
-  manifest {
-    attributes(agentManifestAttributes)
-  }
 }
 
 tasks.build {

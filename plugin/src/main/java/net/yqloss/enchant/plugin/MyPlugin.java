@@ -40,6 +40,14 @@ public class MyPlugin implements Plugin<Project> {
             }
           );
 
+          compileTaskProvider.configure(compileTask -> {
+            compileTask.finalizedBy(enchantTaskProvider);
+          });
+
+          project.getTasks().named(sourceSet.getClassesTaskName(), classesTask -> {
+            classesTask.dependsOn(enchantTaskProvider);
+          });
+
           sourceSet.compiledBy(enchantTaskProvider);
         });
       }
