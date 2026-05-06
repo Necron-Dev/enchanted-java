@@ -1456,4 +1456,57 @@ public final class E {
     unpure();
     return supplier.get();
   }
+
+  /**
+   * Marks the previous call chain as {@link #$safe(Object)}, which needs to end
+   * with void.
+   *
+   * @see #$safe(Object)
+   */
+  public static void $() {
+    unpure();
+  }
+
+  /**
+   * Alias for {@code $return($(value))}.
+   *
+   * @see #$return(Object)
+   */
+  public static <T> T $$return(T value) {
+    unpure();
+    if (value != null) throw new UnenchantedException();
+    return null;
+  }
+
+  /**
+   * Alias for {@code $throw($(throwable))}.
+   *
+   * @see #$throw(Throwable)
+   */
+  public static <T> T $$throw(Throwable throwable) {
+    unpure();
+    if (throwable != null) throw new UnenchantedException();
+    return null;
+  }
+
+  /**
+   * Alias for {@code $also($(object), fn)}, where {@code fn} must be a lambda.
+   *
+   * @see #$also(Object, Consumer)
+   */
+  public static <T> T $$also(T object, Consumer<? super T> fn) {
+    unpure();
+    if (object != null) fn.accept(object);
+    return object;
+  }
+
+  /**
+   * Alias for {@code $with($(object), fn)}, where {@code fn} must be a lambda.
+   *
+   * @see #$with(Object, Function)
+   */
+  public static <T, R> R $$with(T object, Function<? super T, ? extends R> fn) {
+    unpure();
+    return object == null ? null : fn.apply(object);
+  }
 }

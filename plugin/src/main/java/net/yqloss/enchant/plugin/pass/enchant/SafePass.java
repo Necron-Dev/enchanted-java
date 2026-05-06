@@ -38,28 +38,52 @@ public enum SafePass implements Pass {
               var depth = AsmHelper.getStackSize(item.frame());
               if (depth == -1) continue;
               var operations = new ArrayList<Integer>();
+              var containsCheckCast = false;
 
               for (var j = i; j >= 0; j--) {
                 var jtem = analyzed.get(j);
                 var jDepth = AsmHelper.getStackSize(jtem.frame());
-                if (jDepth < depth) break;
+                if (jDepth < depth) {
+                  if (
+                    jtem.insn() instanceof MethodInsnNode min2
+                    && AsmHelper.isCallHook(min2, "safe_skipLast")
+                  ) {
+                    var list = new InsnList();
+                    list.add(new InsnNode(Opcodes.ACONST_NULL));
+                    Analyzed.removeNext(analyzed, j, 1);
+                    Analyzed.insert(analyzed, j, list);
+                    do j--;
+                    while (j >= 0 && analyzed.get(j).insn().getOpcode() <= 0);
+                    j++;
+                  } else {
+                    break;
+                  }
+                }
 
                 if (depth == jDepth) {
                   do j--;
                   while (j >= 0 && analyzed.get(j).insn().getOpcode() <= 0);
                   j++;
                   if (jtem.frame().getStack(depth - 1).isReference()) {
-                    operations.add(j);
+                    var lastOpcode = analyzed.get(j - 1).insn().getOpcode();
+                    if (lastOpcode == Opcodes.CHECKCAST) {
+                      containsCheckCast = true;
+                    }
+                    if (lastOpcode != Opcodes.NEW) {
+                      operations.add(j);
+                    }
                   }
                 }
               }
 
-              var l = new InsnList();
-              l.add(new JumpInsnNode(Opcodes.GOTO, label));
-              l.add(labelNotInstance);
-              l.add(new InsnNode(Opcodes.POP));
-              l.add(new InsnNode(Opcodes.ACONST_NULL));
-              Analyzed.insert(analyzed, i, l);
+              if (containsCheckCast) {
+                var l = new InsnList();
+                l.add(new JumpInsnNode(Opcodes.GOTO, label));
+                l.add(labelNotInstance);
+                l.add(new InsnNode(Opcodes.POP));
+                l.add(new InsnNode(Opcodes.ACONST_NULL));
+                Analyzed.insert(analyzed, i, l);
+              }
 
               var first = true;
 
